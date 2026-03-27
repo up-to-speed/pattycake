@@ -53,7 +53,9 @@ export type Pattern =
   | { type: 'select'; value: PatternSelect }
   // Runtime expression comparison: matches when expr === value at runtime
   // Used for identifier references (e.g. WORKING_TREE) and member expressions (e.g. StorageKind.JSONL)
-  | { type: 'expression'; value: b.Expression };
+  | { type: 'expression'; value: b.Expression }
+  // P.union(...patterns): matches if any of the subpatterns match
+  | { type: 'union'; patterns: Pattern[] };
 
 /**
  * https://github.com/gvergnaud/ts-pattern#literals
@@ -381,6 +383,14 @@ function transformToComplexTsPattern(
         type: 'select',
         value: selection,
       };
+    }
+    case 'union': {
+      const patterns = args.map((arg) => {
+        if (!b.isExpression(arg))
+          throw new Error('Only expressions are supported for `P.union()`');
+        return transformExprToPattern(ht, arg);
+      });
+      return { type: 'union', patterns };
     }
     case '_array':
     case 'set':

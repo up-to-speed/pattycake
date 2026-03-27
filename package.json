@@ -25,14 +25,14 @@
   "author": "Zack Radisic, Aiden Bai",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
     "./package.json": "./package.json"
   },
   "main": "dist/index.js",
-  "module": "dist/index.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
@@ -68,7 +68,7 @@
     "prettier": "^3.0.3",
     "ts-pattern": "^5.0.5",
     "tsup": "^7.2.0",
-    "typescript": "link:@vercel/style-guide/typescript",
+    "typescript": "^5.0.0",
     "vite": "^4.4.9",
     "vitest": "^0.34.4"
   }

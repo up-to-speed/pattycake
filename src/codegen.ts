@@ -11,7 +11,9 @@ import {
   PatternSelect,
   PatternSelectNamed,
 } from './hir';
-import traverse from '@babel/traverse';
+import _traverse from '@babel/traverse';
+// Handle both ESM default and CJS module.exports
+const traverse = (_traverse as any).default ?? _traverse;
 
 export type HirCodegenOpts = {
   /**
@@ -92,7 +94,7 @@ export function hirCodegenInit(
     return {
       ...opts,
       kind: 'block',
-      outVar: path.parent.left,
+      outVar: path.parent.left as b.LVal,
       outLabel: uniqueIdent(0),
       counter: 1,
       patternOriginalOutVar: undefined,
@@ -368,7 +370,7 @@ function hirCodegenConstructSelectionExpr(
  * - Identifier / ObjectPattern / ArrayPattern: use as-is
  */
 function paramToBinding(
-  param: b.Pattern,
+  param: b.Pattern | b.RestElement,
   initExpr: b.Expression,
 ): { lval: b.LVal; init: b.Expression } {
   if (b.isRestElement(param)) {
@@ -482,6 +484,17 @@ function hirCodegenPattern(
       return b.callExpression(
         b.memberExpression(b.identifier('Object'), b.identifier('is')),
         [expr, pattern.value],
+      );
+    }
+    case 'union': {
+      // P.union(a, b, c) => check_a || check_b || check_c
+      const checks = pattern.patterns.map((p) =>
+        hirCodegenPattern(hc, expr, p),
+      );
+      if (checks.length === 0) return b.booleanLiteral(false);
+      if (checks.length === 1) return checks[0]!;
+      return checks.reduce((acc, check) =>
+        b.logicalExpression('||', acc, check),
       );
     }
   }

@@ -63,7 +63,7 @@ __patsy_temp_0: {
     html = \`<img src=\${src} />\`;
     break __patsy_temp_0;
   }
-  html = (() => 'idk bro')(result);
+  html = 'idk bro';
   break __patsy_temp_0;
 }`,
     },
@@ -95,6 +95,7 @@ const foo = match(result)
   .with({ type: 'baz', name: P.select('hey') }, (sel, matchExpr) => console.log(sel, matchExpr))
   // named with sub pattern
   .with({ type: 'blah', name: P.select('hey', P.number) }, (sel, matchExpr) => console.log(sel, matchExpr))
+  .exhaustive()
       `,
       output: `import { match, P } from 'ts-pattern';
 const result = undefined;
