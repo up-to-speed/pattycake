@@ -37,6 +37,8 @@ export type HirCodegen = (
   // monotonically increasing id used for generating unique identifiers
   counter: number;
   branchCtx: BranchCtx;
+  // Set to true when any inlined handler is async, so the wrapping IIFE must be async too
+  hasAsync: boolean;
 } & HirCodegenOpts;
 
 type BranchCtx = {
@@ -74,7 +76,7 @@ export function hirCodegenInit(
         counter: 2,
         patternOriginalOutVar: outVar,
         type: 'pattern-var-decl',
-        branchCtx: {},
+        branchCtx: {}, hasAsync: false,
       };
     }
 
@@ -86,7 +88,7 @@ export function hirCodegenInit(
       counter: 1,
       patternOriginalOutVar: undefined,
       type: 'var-decl',
-      branchCtx: {},
+      branchCtx: {}, hasAsync: false,
     };
   }
 
@@ -99,11 +101,11 @@ export function hirCodegenInit(
       counter: 1,
       patternOriginalOutVar: undefined,
       type: 'assignment',
-      branchCtx: {},
+      branchCtx: {}, hasAsync: false,
     };
   }
 
-  return { ...opts, kind: 'iife', counter: 0, branchCtx: {} };
+  return { ...opts, kind: 'iife', counter: 0, branchCtx: {}, hasAsync: false };
 }
 
 /**
@@ -142,12 +144,13 @@ export function hirCodegen(
     ) {
       // Inline the function expression
       const fn = hir.otherwise;
-      const params = fn.params as b.Identifier[];
+      if (fn.async) hc.hasAsync = true;
       const block: b.Statement[] = [];
-      if (params.length >= 1) {
+      if (fn.params.length >= 1) {
+        const { lval, init } = paramToBinding(fn.params[0]!, expr);
         block.push(
           b.variableDeclaration('let', [
-            b.variableDeclarator(params[0]!, expr),
+            b.variableDeclarator(lval, init),
           ]),
         );
       }
@@ -235,10 +238,8 @@ export function hirCodegen(
   }
 
   if (hc.kind === 'iife') {
-    return b.callExpression(
-      b.arrowFunctionExpression([], b.blockStatement(body)),
-      [],
-    );
+    const arrow = b.arrowFunctionExpression([], b.blockStatement(body), hc.hasAsync);
+    return b.callExpression(arrow, []);
   }
 
   return b.labeledStatement(hc.outLabel, b.blockStatement(body));
@@ -249,29 +250,59 @@ function hirCodegenBranch(
   expr: Expr,
   branch: PatternMatchBranch,
 ): b.Statement {
-  hc.branchCtx = {};
-  const patternChecks = branch.patterns.map((pat) =>
-    hirCodegenPattern(hc, expr, pat),
-  );
+  // When multiple patterns use P.select(), each alternative must have its own
+  // selection scope so captures from non-matching alternatives don't leak.
+  if (branch.patterns.length > 1) {
+    const perAltCtxs: { check: b.Expression; selections: HirCodegen['branchCtx']['selections'] }[] = [];
+    for (const pat of branch.patterns) {
+      hc.branchCtx = {};
+      const check = hirCodegenPattern(hc, expr, pat);
+      perAltCtxs.push({ check, selections: hc.branchCtx.selections });
+    }
 
-  // Multiple patterns in a single .with() are OR'd (match if any pattern matches)
-  let condition: b.Expression;
-  if (patternChecks.length === 1) {
-    condition = patternChecks[0]!;
-  } else {
-    condition = patternChecks.reduce((acc, check) =>
-      b.logicalExpression('||', acc, check),
-    );
+    const hasSelections = perAltCtxs.some((a) => a.selections !== undefined);
+
+    if (!hasSelections) {
+      // No selections — safe to OR all checks together as before
+      let condition: b.Expression = perAltCtxs.reduce<b.Expression | null>(
+        (acc, { check }) => (acc === null ? check : b.logicalExpression('||', acc, check)),
+        null,
+      )!;
+      if (branch.guard !== undefined) {
+        condition = b.logicalExpression('&&', condition, b.callExpression(branch.guard, [expr]));
+      }
+      hc.branchCtx = {};
+      const then = hirCodegenPatternThen(hc, expr, branch.then);
+      return b.ifStatement(condition, then);
+    }
+
+    // Selections present — emit separate if-statements per alternative so each
+    // gets its own scoped selections.
+    let result: b.IfStatement | null = null;
+    for (let i = perAltCtxs.length - 1; i >= 0; i--) {
+      let condition = perAltCtxs[i]!.check;
+      if (branch.guard !== undefined) {
+        condition = b.logicalExpression('&&', condition, b.callExpression(branch.guard, [expr]));
+      }
+      hc.branchCtx = { selections: perAltCtxs[i]!.selections };
+      const then = hirCodegenPatternThen(hc, expr, branch.then);
+      result = b.ifStatement(condition, then, result ?? undefined);
+    }
+    return result!;
   }
 
+  hc.branchCtx = {};
+  const condition = hirCodegenPattern(hc, expr, branch.patterns[0]!);
+
+  let finalCondition = condition;
   // Apply guard function if present
   if (branch.guard !== undefined) {
     const guardCall = b.callExpression(branch.guard, [expr]);
-    condition = b.logicalExpression('&&', condition, guardCall);
+    finalCondition = b.logicalExpression('&&', finalCondition, guardCall);
   }
 
   const then = hirCodegenPatternThen(hc, expr, branch.then);
-  return b.ifStatement(condition, then);
+  return b.ifStatement(finalCondition, then);
 }
 
 // TODO: here is where we would also do the captures from P.select()
@@ -282,6 +313,7 @@ function hirCodegenPatternThen(
 ): b.BlockStatement {
   // Try to inline function expressions
   if (then.type === 'ArrowFunctionExpression') {
+    if (then.async) hc.hasAsync = true;
     return hirCodegenPatternThenFunction(
       hc,
       expr,
@@ -289,6 +321,7 @@ function hirCodegenPatternThen(
       then.body,
     );
   } else if (then.type === 'FunctionExpression') {
+    if (then.async) hc.hasAsync = true;
     return hirCodegenPatternThenFunction(
       hc,
       expr,
@@ -370,7 +403,7 @@ function hirCodegenConstructSelectionExpr(
  * - Identifier / ObjectPattern / ArrayPattern: use as-is
  */
 function paramToBinding(
-  param: b.Pattern | b.RestElement,
+  param: b.Identifier | b.Pattern | b.RestElement,
   initExpr: b.Expression,
 ): { lval: b.LVal; init: b.Expression } {
   if (b.isRestElement(param)) {
@@ -378,8 +411,9 @@ function paramToBinding(
     return { lval: param.argument as b.LVal, init: b.arrayExpression([initExpr]) };
   }
   if (b.isAssignmentPattern(param)) {
-    // (x = 1) => ... : x should be matchedValue (default is irrelevant)
-    return { lval: param.left as b.LVal, init: initExpr };
+    // (x = 1) => ... : preserve the default initializer via array destructuring
+    // so that `undefined` triggers the default, matching function parameter semantics
+    return { lval: b.arrayPattern([param]), init: b.arrayExpression([initExpr]) };
   }
   return { lval: param as b.LVal, init: initExpr };
 }
@@ -387,7 +421,7 @@ function paramToBinding(
 function hirCodegenPatternThenFunction(
   hc: HirCodegen,
   expr: Expr,
-  args: b.Pattern[],
+  args: (b.Identifier | b.Pattern | b.RestElement)[],
   body: b.BlockStatement | b.Expression,
 ): b.BlockStatement {
   const block: b.Statement[] = [];
@@ -395,13 +429,24 @@ function hirCodegenPatternThenFunction(
   if (args.length > 1 && hc.branchCtx.selections === undefined) {
     throw new Error('unimplemented more than one arg on result function');
   } else if (args.length === 1) {
-    const valueExpr = hc.branchCtx.selections === undefined
-      ? expr
-      : hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
-    const { lval, init } = paramToBinding(args[0]!, valueExpr);
-    block.push(
-      b.variableDeclaration('let', [b.variableDeclarator(lval, init)]),
-    );
+    const param = args[0]!;
+    if (b.isRestElement(param) && hc.branchCtx.selections !== undefined) {
+      // (...args) with selections: ts-pattern calls handler(selection, matchExpr)
+      const selExpr = hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
+      block.push(
+        b.variableDeclaration('let', [
+          b.variableDeclarator(param.argument as b.LVal, b.arrayExpression([selExpr, expr])),
+        ]),
+      );
+    } else {
+      const valueExpr = hc.branchCtx.selections === undefined
+        ? expr
+        : hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
+      const { lval, init } = paramToBinding(param, valueExpr);
+      block.push(
+        b.variableDeclaration('let', [b.variableDeclarator(lval, init)]),
+      );
+    }
   } else if (args.length === 2 && hc.branchCtx.selections !== undefined) {
     const selExpr = hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
     const { lval: lval0, init: init0 } = paramToBinding(args[0]!, selExpr);
@@ -480,11 +525,46 @@ function hirCodegenPattern(
       return hirCodegenPatternSelect(hc, expr, pattern.value);
     }
     case 'expression': {
-      // Runtime equality comparison using Object.is() for correct NaN/-0 semantics
-      return b.callExpression(
+      // ts-pattern treats plain-object patterns structurally, so an identifier
+      // whose value is e.g. { type: 'ok' } must match any object with that key,
+      // not just the same reference. For primitives, Object.is() is still correct.
+      const patId = pattern.value;
+      const objectIs = b.callExpression(
         b.memberExpression(b.identifier('Object'), b.identifier('is')),
-        [expr, pattern.value],
+        [expr, patId],
       );
+      const isObject = b.logicalExpression(
+        '&&',
+        b.binaryExpression('===', b.unaryExpression('typeof', patId), b.stringLiteral('object')),
+        b.binaryExpression('!==', patId, b.nullLiteral()),
+      );
+      const kParam = b.identifier('k');
+      const everyCheck = b.callExpression(
+        b.memberExpression(
+          b.callExpression(
+            b.memberExpression(b.identifier('Object'), b.identifier('keys')),
+            [patId],
+          ),
+          b.identifier('every'),
+        ),
+        [
+          b.arrowFunctionExpression(
+            [kParam],
+            b.logicalExpression(
+              '&&',
+              b.binaryExpression('!=', expr, b.nullLiteral()),
+              b.callExpression(
+                b.memberExpression(b.identifier('Object'), b.identifier('is')),
+                [
+                  b.memberExpression(expr, kParam, true),
+                  b.memberExpression(patId, kParam, true),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+      return b.conditionalExpression(isObject, everyCheck, objectIs);
     }
     case 'union': {
       // P.union(a, b, c) => check_a || check_b || check_c

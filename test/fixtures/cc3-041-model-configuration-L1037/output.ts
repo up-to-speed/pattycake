@@ -27,21 +27,21 @@ __patsy_temp_0: {
 
     // Use API key (existing logic)
     __patsy_temp_0: {
-      if (Object.is(builtin, ModelProvider.OPENAI)) {
+      if (typeof ModelProvider.OPENAI === "object" && ModelProvider.OPENAI !== null ? Object.keys(ModelProvider.OPENAI).every(k => builtin != null && Object.is(builtin[k], ModelProvider.OPENAI[k])) : Object.is(builtin, ModelProvider.OPENAI)) {
         const provider = createOpenAI({
           apiKey
         });
         __result = provider(modelId);
         break __patsy_temp_0;
       }
-      if (Object.is(builtin, ModelProvider.GOOGLE)) {
+      if (typeof ModelProvider.GOOGLE === "object" && ModelProvider.GOOGLE !== null ? Object.keys(ModelProvider.GOOGLE).every(k => builtin != null && Object.is(builtin[k], ModelProvider.GOOGLE[k])) : Object.is(builtin, ModelProvider.GOOGLE)) {
         const provider = createGoogleGenerativeAI({
           apiKey
         });
         __result = provider(modelId);
         break __patsy_temp_0;
       }
-      if (Object.is(builtin, ModelProvider.ANTHROPIC)) {
+      if (typeof ModelProvider.ANTHROPIC === "object" && ModelProvider.ANTHROPIC !== null ? Object.keys(ModelProvider.ANTHROPIC).every(k => builtin != null && Object.is(builtin[k], ModelProvider.ANTHROPIC[k])) : Object.is(builtin, ModelProvider.ANTHROPIC)) {
         const provider = createAnthropic({
           apiKey
         });

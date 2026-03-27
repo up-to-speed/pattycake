@@ -12,7 +12,7 @@ declare const coupling: any;
 declare const geminiProvider: any;
 let __result;
 __patsy_temp_0: {
-  if (Object.is(provider, ModelProvider.ANTHROPIC)) {
+  if (typeof ModelProvider.ANTHROPIC === "object" && ModelProvider.ANTHROPIC !== null ? Object.keys(ModelProvider.ANTHROPIC).every(k => provider != null && Object.is(provider[k], ModelProvider.ANTHROPIC[k])) : Object.is(provider, ModelProvider.ANTHROPIC)) {
     // TODO 2026.01.10 jkoppel: Can we just pass the names through? Will it work? Hate this hidden coupling.
     // Map full model IDs to Claude Code tier names
     // TAG_HIDDEN_COUPLING_CLAUDE_NAMES
@@ -30,7 +30,7 @@ __patsy_temp_0: {
     __result = await claudeCode(tier);
     break __patsy_temp_0;
   }
-  if (Object.is(provider, ModelProvider.GOOGLE)) {
+  if (typeof ModelProvider.GOOGLE === "object" && ModelProvider.GOOGLE !== null ? Object.keys(ModelProvider.GOOGLE).every(k => provider != null && Object.is(provider[k], ModelProvider.GOOGLE[k])) : Object.is(provider, ModelProvider.GOOGLE)) {
     // Gemini CLI uses OAuth authentication
     const {
       createGeminiProvider
@@ -44,7 +44,7 @@ __patsy_temp_0: {
     };
     break __patsy_temp_0;
   }
-  if (Object.is(provider, ModelProvider.OPENAI)) {
+  if (typeof ModelProvider.OPENAI === "object" && ModelProvider.OPENAI !== null ? Object.keys(ModelProvider.OPENAI).every(k => provider != null && Object.is(provider[k], ModelProvider.OPENAI[k])) : Object.is(provider, ModelProvider.OPENAI)) {
     __result = await codexCliModel(modelId);
     break __patsy_temp_0;
   }

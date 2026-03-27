@@ -87,4 +87,101 @@ export { actual };
     const mod = await importTransformedModule(code);
     expect(mod.actual).toBe(expected);
   });
+
+  // Bug: object-valued identifier patterns should match structurally, not by reference
+  it('matches object-valued pattern constants structurally, not by reference', async () => {
+    const mod = await importTransformedModule(`
+import { match, P } from 'ts-pattern';
+
+const pat = { type: 'ok' };
+const actual = match({ type: 'ok' })
+  .with(pat, () => 'matched')
+  .otherwise(() => 'missed');
+
+export { actual };
+`);
+
+    expect(mod.actual).toBe('matched');
+  });
+
+  // Bug: .otherwise() with rest parameter produces invalid JS
+  it('otherwise() with rest parameter does not produce invalid code', async () => {
+    const mod = await importTransformedModule(`
+import { match } from 'ts-pattern';
+
+const actual = match(42)
+  .with(1, () => 'one')
+  .otherwise((...args) => args.length);
+
+export { actual };
+`);
+
+    expect(mod.actual).toBe(1);
+  });
+
+  // Bug: .otherwise() with default parameter produces invalid JS
+  it('otherwise() with default parameter does not produce invalid code', async () => {
+    const mod = await importTransformedModule(`
+import { match } from 'ts-pattern';
+
+const actual = match(42)
+  .with(1, () => 'one')
+  .otherwise((x = 1) => x);
+
+export { actual };
+`);
+
+    expect(mod.actual).toBe(42);
+  });
+
+  // Bug: default initializer is dropped when inlining .with() handler
+  it('preserves default initializer in .with() handler when value is undefined', async () => {
+    const mod = await importTransformedModule(`
+import { match, P } from 'ts-pattern';
+
+const actual = match(undefined)
+  .with(P._, (x = 1) => x)
+  .otherwise(() => 'missed');
+
+export { actual };
+`);
+
+    expect(mod.actual).toBe(1);
+  });
+
+  // Bug: P.select() captures leak across OR'd alternatives
+  it('scopes P.select() captures to the matched alternative', async () => {
+    const mod = await importTransformedModule(`
+import { match, P } from 'ts-pattern';
+
+const actual = match({ type: 'a', a: 10 })
+  .with(
+    { type: 'a', a: P.select('foo') },
+    { type: 'b', b: P.select('bar') },
+    (sel) => sel
+  )
+  .otherwise(() => 'missed');
+
+export { actual };
+`);
+
+    expect(mod.actual).toEqual({ foo: 10 });
+    expect(mod.actual).not.toHaveProperty('bar');
+  });
+
+  // Bug: rest parameter in handler with P.select() only gets selection, not both args
+  it('passes both selection and matchExpr to rest parameter with P.select()', async () => {
+    const mod = await importTransformedModule(`
+import { match, P } from 'ts-pattern';
+
+const input = { x: 1 };
+const actual = match(input)
+  .with({ x: P.select() }, (...args) => args)
+  .otherwise(() => 'missed');
+
+export { actual };
+`);
+
+    expect(mod.actual).toEqual([1, { x: 1 }]);
+  });
 });

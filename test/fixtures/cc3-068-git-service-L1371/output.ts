@@ -4,23 +4,23 @@ declare const with: any;
 declare const exhaustive: any;
 let __result;
 __patsy_temp_0: {
-  if (Object.is(commitReference, STAGED_ONLY)) {
+  if (typeof STAGED_ONLY === "object" && STAGED_ONLY !== null ? Object.keys(STAGED_ONLY).every(k => commitReference != null && Object.is(commitReference[k], STAGED_ONLY[k])) : Object.is(commitReference, STAGED_ONLY)) {
     __result = isStagedFileError;
     break __patsy_temp_0;
   }
-  if (Object.is(commitReference, WORKING_TREE)) {
+  if (typeof WORKING_TREE === "object" && WORKING_TREE !== null ? Object.keys(WORKING_TREE).every(k => commitReference != null && Object.is(commitReference[k], WORKING_TREE[k])) : Object.is(commitReference, WORKING_TREE)) {
     __result = false;
     break __patsy_temp_0;
   }
-  if (Object.is(commitReference, HEAD)) {
+  if (typeof HEAD === "object" && HEAD !== null ? Object.keys(HEAD).every(k => commitReference != null && Object.is(commitReference[k], HEAD[k])) : Object.is(commitReference, HEAD)) {
     __result = false;
     break __patsy_temp_0;
   }
-  if (Object.is(commitReference, DEFAULT_BRANCH)) {
+  if (typeof DEFAULT_BRANCH === "object" && DEFAULT_BRANCH !== null ? Object.keys(DEFAULT_BRANCH).every(k => commitReference != null && Object.is(commitReference[k], DEFAULT_BRANCH[k])) : Object.is(commitReference, DEFAULT_BRANCH)) {
     __result = false;
     break __patsy_temp_0;
   }
-  if (Object.is(commitReference, PARENT_BRANCH)) {
+  if (typeof PARENT_BRANCH === "object" && PARENT_BRANCH !== null ? Object.keys(PARENT_BRANCH).every(k => commitReference != null && Object.is(commitReference[k], PARENT_BRANCH[k])) : Object.is(commitReference, PARENT_BRANCH)) {
     __result = false;
     break __patsy_temp_0;
   }

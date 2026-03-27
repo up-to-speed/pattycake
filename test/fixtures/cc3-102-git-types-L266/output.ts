@@ -4,14 +4,14 @@ declare const with: any;
 declare const exhaustive: any;
 let __result;
 __patsy_temp_0: {
-  if (Object.is(ref, HEAD)) {
+  if (typeof HEAD === "object" && HEAD !== null ? Object.keys(HEAD).every(k => ref != null && Object.is(ref[k], HEAD[k])) : Object.is(ref, HEAD)) {
     __result = "HEAD";
     break __patsy_temp_0;
   }
-  if (Object.is(ref, WORKING_TREE)) {
+  if (typeof WORKING_TREE === "object" && WORKING_TREE !== null ? Object.keys(WORKING_TREE).every(k => ref != null && Object.is(ref[k], WORKING_TREE[k])) : Object.is(ref, WORKING_TREE)) {
     throw new Error("WORKING_TREE cannot be converted to a git argument directly");
   }
-  if (Object.is(ref, STAGED_ONLY)) {
+  if (typeof STAGED_ONLY === "object" && STAGED_ONLY !== null ? Object.keys(STAGED_ONLY).every(k => ref != null && Object.is(ref[k], STAGED_ONLY[k])) : Object.is(ref, STAGED_ONLY)) {
     throw new Error("STAGED_ONLY cannot be converted to a git argument directly");
   }
   if (typeof ref === "string") {

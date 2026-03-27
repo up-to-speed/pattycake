@@ -7,23 +7,23 @@ declare const branchRef: any;
 declare const sha: any;
 let __result;
 __patsy_temp_0: {
-  if (Object.is(ref, WORKING_TREE)) {
+  if (typeof WORKING_TREE === "object" && WORKING_TREE !== null ? Object.keys(WORKING_TREE).every(k => ref != null && Object.is(ref[k], WORKING_TREE[k])) : Object.is(ref, WORKING_TREE)) {
     __result = "working tree";
     break __patsy_temp_0;
   }
-  if (Object.is(ref, STAGED_ONLY)) {
+  if (typeof STAGED_ONLY === "object" && STAGED_ONLY !== null ? Object.keys(STAGED_ONLY).every(k => ref != null && Object.is(ref[k], STAGED_ONLY[k])) : Object.is(ref, STAGED_ONLY)) {
     __result = "staged";
     break __patsy_temp_0;
   }
-  if (Object.is(ref, HEAD)) {
+  if (typeof HEAD === "object" && HEAD !== null ? Object.keys(HEAD).every(k => ref != null && Object.is(ref[k], HEAD[k])) : Object.is(ref, HEAD)) {
     __result = "HEAD";
     break __patsy_temp_0;
   }
-  if (Object.is(ref, DEFAULT_BRANCH)) {
+  if (typeof DEFAULT_BRANCH === "object" && DEFAULT_BRANCH !== null ? Object.keys(DEFAULT_BRANCH).every(k => ref != null && Object.is(ref[k], DEFAULT_BRANCH[k])) : Object.is(ref, DEFAULT_BRANCH)) {
     __result = "default branch";
     break __patsy_temp_0;
   }
-  if (Object.is(ref, PARENT_BRANCH)) {
+  if (typeof PARENT_BRANCH === "object" && PARENT_BRANCH !== null ? Object.keys(PARENT_BRANCH).every(k => ref != null && Object.is(ref[k], PARENT_BRANCH[k])) : Object.is(ref, PARENT_BRANCH)) {
     __result = "parent branch";
     break __patsy_temp_0;
   }

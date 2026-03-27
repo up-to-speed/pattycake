@@ -368,7 +368,8 @@ function hirCodegenInit(path, opts) {
         counter: 2,
         patternOriginalOutVar: outVar,
         type: "pattern-var-decl",
-        branchCtx: {}
+        branchCtx: {},
+        hasAsync: false
       };
     }
     return {
@@ -379,7 +380,8 @@ function hirCodegenInit(path, opts) {
       counter: 1,
       patternOriginalOutVar: void 0,
       type: "var-decl",
-      branchCtx: {}
+      branchCtx: {},
+      hasAsync: false
     };
   }
   if (b2.isAssignmentExpression(path.parent)) {
@@ -391,10 +393,11 @@ function hirCodegenInit(path, opts) {
       counter: 1,
       patternOriginalOutVar: void 0,
       type: "assignment",
-      branchCtx: {}
+      branchCtx: {},
+      hasAsync: false
     };
   }
-  return { ...opts, kind: "iife", counter: 0, branchCtx: {} };
+  return { ...opts, kind: "iife", counter: 0, branchCtx: {}, hasAsync: false };
 }
 function hirCodegen(hc, hir) {
   let expr = hir.expr;
@@ -411,12 +414,14 @@ function hirCodegen(hc, hir) {
   if (hir.otherwise !== void 0) {
     if (hir.otherwise.type === "ArrowFunctionExpression" || hir.otherwise.type === "FunctionExpression") {
       const fn = hir.otherwise;
-      const params = fn.params;
+      if (fn.async)
+        hc.hasAsync = true;
       const block = [];
-      if (params.length >= 1) {
+      if (fn.params.length >= 1) {
+        const { lval, init } = paramToBinding(fn.params[0], expr);
         block.push(
           b2.variableDeclaration("let", [
-            b2.variableDeclarator(params[0], expr)
+            b2.variableDeclarator(lval, init)
           ])
         );
       }
@@ -477,35 +482,58 @@ function hirCodegen(hc, hir) {
     body.push(...[letDisplayedValue, tryCatch, throwError]);
   }
   if (hc.kind === "iife") {
-    return b2.callExpression(
-      b2.arrowFunctionExpression([], b2.blockStatement(body)),
-      []
-    );
+    const arrow = b2.arrowFunctionExpression([], b2.blockStatement(body), hc.hasAsync);
+    return b2.callExpression(arrow, []);
   }
   return b2.labeledStatement(hc.outLabel, b2.blockStatement(body));
 }
 function hirCodegenBranch(hc, expr, branch) {
-  hc.branchCtx = {};
-  const patternChecks = branch.patterns.map(
-    (pat) => hirCodegenPattern(hc, expr, pat)
-  );
-  let condition;
-  if (patternChecks.length === 1) {
-    condition = patternChecks[0];
-  } else {
-    condition = patternChecks.reduce(
-      (acc, check) => b2.logicalExpression("||", acc, check)
-    );
+  if (branch.patterns.length > 1) {
+    const perAltCtxs = [];
+    for (const pat of branch.patterns) {
+      hc.branchCtx = {};
+      const check = hirCodegenPattern(hc, expr, pat);
+      perAltCtxs.push({ check, selections: hc.branchCtx.selections });
+    }
+    const hasSelections = perAltCtxs.some((a) => a.selections !== void 0);
+    if (!hasSelections) {
+      let condition2 = perAltCtxs.reduce(
+        (acc, { check }) => acc === null ? check : b2.logicalExpression("||", acc, check),
+        null
+      );
+      if (branch.guard !== void 0) {
+        condition2 = b2.logicalExpression("&&", condition2, b2.callExpression(branch.guard, [expr]));
+      }
+      hc.branchCtx = {};
+      const then2 = hirCodegenPatternThen(hc, expr, branch.then);
+      return b2.ifStatement(condition2, then2);
+    }
+    let result = null;
+    for (let i = perAltCtxs.length - 1; i >= 0; i--) {
+      let condition2 = perAltCtxs[i].check;
+      if (branch.guard !== void 0) {
+        condition2 = b2.logicalExpression("&&", condition2, b2.callExpression(branch.guard, [expr]));
+      }
+      hc.branchCtx = { selections: perAltCtxs[i].selections };
+      const then2 = hirCodegenPatternThen(hc, expr, branch.then);
+      result = b2.ifStatement(condition2, then2, result ?? void 0);
+    }
+    return result;
   }
+  hc.branchCtx = {};
+  const condition = hirCodegenPattern(hc, expr, branch.patterns[0]);
+  let finalCondition = condition;
   if (branch.guard !== void 0) {
     const guardCall = b2.callExpression(branch.guard, [expr]);
-    condition = b2.logicalExpression("&&", condition, guardCall);
+    finalCondition = b2.logicalExpression("&&", finalCondition, guardCall);
   }
   const then = hirCodegenPatternThen(hc, expr, branch.then);
-  return b2.ifStatement(condition, then);
+  return b2.ifStatement(finalCondition, then);
 }
 function hirCodegenPatternThen(hc, expr, then) {
   if (then.type === "ArrowFunctionExpression") {
+    if (then.async)
+      hc.hasAsync = true;
     return hirCodegenPatternThenFunction(
       hc,
       expr,
@@ -513,6 +541,8 @@ function hirCodegenPatternThen(hc, expr, then) {
       then.body
     );
   } else if (then.type === "FunctionExpression") {
+    if (then.async)
+      hc.hasAsync = true;
     return hirCodegenPatternThenFunction(
       hc,
       expr,
@@ -557,7 +587,7 @@ function paramToBinding(param, initExpr) {
     return { lval: param.argument, init: b2.arrayExpression([initExpr]) };
   }
   if (b2.isAssignmentPattern(param)) {
-    return { lval: param.left, init: initExpr };
+    return { lval: b2.arrayPattern([param]), init: b2.arrayExpression([initExpr]) };
   }
   return { lval: param, init: initExpr };
 }
@@ -566,11 +596,21 @@ function hirCodegenPatternThenFunction(hc, expr, args, body) {
   if (args.length > 1 && hc.branchCtx.selections === void 0) {
     throw new Error("unimplemented more than one arg on result function");
   } else if (args.length === 1) {
-    const valueExpr = hc.branchCtx.selections === void 0 ? expr : hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
-    const { lval, init } = paramToBinding(args[0], valueExpr);
-    block.push(
-      b2.variableDeclaration("let", [b2.variableDeclarator(lval, init)])
-    );
+    const param = args[0];
+    if (b2.isRestElement(param) && hc.branchCtx.selections !== void 0) {
+      const selExpr = hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
+      block.push(
+        b2.variableDeclaration("let", [
+          b2.variableDeclarator(param.argument, b2.arrayExpression([selExpr, expr]))
+        ])
+      );
+    } else {
+      const valueExpr = hc.branchCtx.selections === void 0 ? expr : hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
+      const { lval, init } = paramToBinding(param, valueExpr);
+      block.push(
+        b2.variableDeclaration("let", [b2.variableDeclarator(lval, init)])
+      );
+    }
   } else if (args.length === 2 && hc.branchCtx.selections !== void 0) {
     const selExpr = hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
     const { lval: lval0, init: init0 } = paramToBinding(args[0], selExpr);

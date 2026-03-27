@@ -11,7 +11,7 @@ declare const results: any;
 let __result;
 __patsy_temp_0: {
   const __patsy_temp_1 = result.exitCode;
-  if (Object.is(__patsy_temp_1, GrepLikeExitCode.ERROR)) {
+  if (typeof GrepLikeExitCode.ERROR === "object" && GrepLikeExitCode.ERROR !== null ? Object.keys(GrepLikeExitCode.ERROR).every(k => __patsy_temp_1 != null && Object.is(__patsy_temp_1[k], GrepLikeExitCode.ERROR[k])) : Object.is(__patsy_temp_1, GrepLikeExitCode.ERROR)) {
     // TODO 2025.12.09: it should be possible to have the logger add the function name, without having to add it in the message
     logger.error(`handleSearchToolExitCode: ${toolName} error`, {
       exitCode: result.exitCode,
@@ -23,7 +23,7 @@ __patsy_temp_0: {
     };
     break __patsy_temp_0;
   }
-  if (Object.is(__patsy_temp_1, GrepLikeExitCode.NO_MATCHES)) {
+  if (typeof GrepLikeExitCode.NO_MATCHES === "object" && GrepLikeExitCode.NO_MATCHES !== null ? Object.keys(GrepLikeExitCode.NO_MATCHES).every(k => __patsy_temp_1 != null && Object.is(__patsy_temp_1[k], GrepLikeExitCode.NO_MATCHES[k])) : Object.is(__patsy_temp_1, GrepLikeExitCode.NO_MATCHES)) {
     logger.debug("handleSearchToolExitCode: No matches found", {
       query
     });
@@ -34,7 +34,7 @@ __patsy_temp_0: {
     };
     break __patsy_temp_0;
   }
-  if (Object.is(__patsy_temp_1, GrepLikeExitCode.MATCHES_FOUND)) {
+  if (typeof GrepLikeExitCode.MATCHES_FOUND === "object" && GrepLikeExitCode.MATCHES_FOUND !== null ? Object.keys(GrepLikeExitCode.MATCHES_FOUND).every(k => __patsy_temp_1 != null && Object.is(__patsy_temp_1[k], GrepLikeExitCode.MATCHES_FOUND[k])) : Object.is(__patsy_temp_1, GrepLikeExitCode.MATCHES_FOUND)) {
     logger.debug(`handleSearchToolExitCode: ${toolName} output`, {
       stdout: result.stdout
     });

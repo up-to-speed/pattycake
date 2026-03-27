@@ -12,21 +12,21 @@ declare const messages: any;
 declare const separately: any;
 let __result;
 __patsy_temp_0: {
-  if (Object.is(block?.type, CONTENT_TYPES.TEXT)) {
+  if (typeof CONTENT_TYPES.TEXT === "object" && CONTENT_TYPES.TEXT !== null ? Object.keys(CONTENT_TYPES.TEXT).every(k => block?.type != null && Object.is((block?.type)[k], CONTENT_TYPES.TEXT[k])) : Object.is(block?.type, CONTENT_TYPES.TEXT)) {
     let b = block;
     blocks.push({
       type: CONTENT_TYPES.TEXT,
       text: b.value
     });
   }
-  if (Object.is(block?.type, CONTENT_TYPES.CODE)) {
+  if (typeof CONTENT_TYPES.CODE === "object" && CONTENT_TYPES.CODE !== null ? Object.keys(CONTENT_TYPES.CODE).every(k => block?.type != null && Object.is((block?.type)[k], CONTENT_TYPES.CODE[k])) : Object.is(block?.type, CONTENT_TYPES.CODE)) {
     let b = block;
     blocks.push({
       type: CONTENT_TYPES.TEXT,
       text: formatCodeBlockForText(b.value, b.language)
     });
   }
-  if (Object.is(block?.type, CONTENT_TYPES.IMAGE)) {
+  if (typeof CONTENT_TYPES.IMAGE === "object" && CONTENT_TYPES.IMAGE !== null ? Object.keys(CONTENT_TYPES.IMAGE).every(k => block?.type != null && Object.is((block?.type)[k], CONTENT_TYPES.IMAGE[k])) : Object.is(block?.type, CONTENT_TYPES.IMAGE)) {
     let b = block;
     if (!isSupportedImageMimeType(b.mimeType)) {
       throw new Error(`ClaudeCodeRunnerResumable: Unsupported image mime type ${b.mimeType}`);
@@ -40,7 +40,7 @@ __patsy_temp_0: {
       }
     });
   }
-  if (Object.is(block?.type, CONTENT_TYPES.TOOL_USE)) {
+  if (typeof CONTENT_TYPES.TOOL_USE === "object" && CONTENT_TYPES.TOOL_USE !== null ? Object.keys(CONTENT_TYPES.TOOL_USE).every(k => block?.type != null && Object.is((block?.type)[k], CONTENT_TYPES.TOOL_USE[k])) : Object.is(block?.type, CONTENT_TYPES.TOOL_USE)) {
     throw new Error(`ClaudeCodeRunnerResumable: tool_use content blocks are not supported in user messages. Tool use blocks should be handled separately.`);
   }
   let __patsy__displayedValue;

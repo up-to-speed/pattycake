@@ -28,7 +28,7 @@ declare const imports: any;
 declare const geminiProvider: any;
 let __result;
 __patsy_temp_0: {
-  if (Object.is(provider, ModelProvider.ANTHROPIC)) {
+  if (typeof ModelProvider.ANTHROPIC === "object" && ModelProvider.ANTHROPIC !== null ? Object.keys(ModelProvider.ANTHROPIC).every(k => provider != null && Object.is(provider[k], ModelProvider.ANTHROPIC[k])) : Object.is(provider, ModelProvider.ANTHROPIC)) {
     // Actually test the Claude Code CLI by making a simple API call
     try {
       const model = await claudeCode("sonnet");
@@ -59,7 +59,7 @@ __patsy_temp_0: {
       break __patsy_temp_0;
     }
   }
-  if (Object.is(provider, ModelProvider.GOOGLE)) {
+  if (typeof ModelProvider.GOOGLE === "object" && ModelProvider.GOOGLE !== null ? Object.keys(ModelProvider.GOOGLE).every(k => provider != null && Object.is(provider[k], ModelProvider.GOOGLE[k])) : Object.is(provider, ModelProvider.GOOGLE)) {
     // TODO 2026.01.10 jkoppel: Claude Code wrote this; untested. Don't have a Gemini subscription to test on.
     // For Gemini, check credentials file first (fast check)
     const homeDir = os.homedir();
@@ -116,7 +116,7 @@ __patsy_temp_0: {
       break __patsy_temp_0;
     }
   }
-  if (Object.is(provider, ModelProvider.OPENAI)) {
+  if (typeof ModelProvider.OPENAI === "object" && ModelProvider.OPENAI !== null ? Object.keys(ModelProvider.OPENAI).every(k => provider != null && Object.is(provider[k], ModelProvider.OPENAI[k])) : Object.is(provider, ModelProvider.OPENAI)) {
     try {
       const model = await codexCliModel("gpt-5.2");
       if (!model) {
