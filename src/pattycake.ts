@@ -24,6 +24,13 @@ const pattycakePlugin = (opts: Opts): PluginObj => {
     name: 'pattycake',
     visitor: {
       Program(path) {
+        // Reset state for each file to prevent leaks between files
+        state = {
+          matchIdentifier: undefined,
+          patternIdentifier: undefined,
+        };
+        hirTransform = undefined;
+
         path.traverse<State>(
           {
             ImportDeclaration(path, state) {

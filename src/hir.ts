@@ -158,6 +158,12 @@ function hirFromCallExprImpl(
         exhaustive = true;
         break;
       }
+      case 'run': {
+        // .run() is like .exhaustive() but executes immediately
+        // It's equivalent to .exhaustive() for our purposes
+        exhaustive = true;
+        break;
+      }
       default: {
         throw new Error(`Unhandled ts-pattern API function: ${property.name}`);
       }
@@ -452,7 +458,14 @@ function transformToPatternObjExpr(
     if (!b.isObjectProperty(prop)) {
       throw new Error(`invalid pattern property type: ${prop.type}`);
     }
-    if (!b.isIdentifier(prop.key)) {
+    let keyName: string;
+    if (b.isIdentifier(prop.key)) {
+      keyName = prop.key.name;
+    } else if (b.isStringLiteral(prop.key)) {
+      keyName = prop.key.value;
+    } else if (b.isNumericLiteral(prop.key)) {
+      keyName = String(prop.key.value);
+    } else {
       throw new Error(`invalid pattern property key type: ${prop.key.type}`);
     }
     if (!b.isExpression(prop.value)) {
@@ -460,7 +473,7 @@ function transformToPatternObjExpr(
         `invalid pattern property value type: ${prop.value.type}`,
       );
     }
-    value[prop.key.name] = transformExprToPattern(ht, prop.value);
+    value[keyName] = transformExprToPattern(ht, prop.value);
   }
 
   return {

@@ -134,14 +134,37 @@ export function hirCodegen(
 
   // Call otherwise if set:
   if (hir.otherwise !== undefined) {
-    // TODO: inline function expressions if trivial?
-    body.push(
-      ...hirCodegenOutput(
-        hc,
-        b.callExpression(b.parenthesizedExpression(hir.otherwise), [expr]),
-      ),
-    );
-  } else if (!hir.exhaustive) {
+    if (
+      hir.otherwise.type === 'ArrowFunctionExpression' ||
+      hir.otherwise.type === 'FunctionExpression'
+    ) {
+      // Inline the function expression
+      const fn = hir.otherwise;
+      const params = fn.params as b.Identifier[];
+      const block: b.Statement[] = [];
+      if (params.length >= 1) {
+        block.push(
+          b.variableDeclaration('let', [
+            b.variableDeclarator(params[0]!, expr),
+          ]),
+        );
+      }
+      if (fn.body.type !== 'BlockStatement') {
+        block.push(...hirCodegenOutput(hc, fn.body));
+      } else {
+        hirCodegenRewriteReturns(hc, fn.body);
+        block.push(...fn.body.body);
+      }
+      body.push(...block);
+    } else {
+      body.push(
+        ...hirCodegenOutput(
+          hc,
+          b.callExpression(b.parenthesizedExpression(hir.otherwise), [expr]),
+        ),
+      );
+    }
+  } else {
     // If no otherwise and not exhaustive generate error if no match.
     //
     // Basically want to create this:
@@ -228,8 +251,25 @@ function hirCodegenBranch(
   const patternChecks = branch.patterns.map((pat) =>
     hirCodegenPattern(hc, expr, pat),
   );
+
+  // Multiple patterns in a single .with() are OR'd (match if any pattern matches)
+  let condition: b.Expression;
+  if (patternChecks.length === 1) {
+    condition = patternChecks[0]!;
+  } else {
+    condition = patternChecks.reduce((acc, check) =>
+      b.logicalExpression('||', acc, check),
+    );
+  }
+
+  // Apply guard function if present
+  if (branch.guard !== undefined) {
+    const guardCall = b.callExpression(branch.guard, [expr]);
+    condition = b.logicalExpression('&&', condition, guardCall);
+  }
+
   const then = hirCodegenPatternThen(hc, expr, branch.then);
-  return b.ifStatement(concatConditionals(patternChecks), then);
+  return b.ifStatement(condition, then);
 }
 
 // TODO: here is where we would also do the captures from P.select()
@@ -414,7 +454,10 @@ function hirCodegenPattern(
     case 'wildcard': {
       return b.booleanLiteral(true);
     }
-    case 'nullish':
+    case 'nullish': {
+      // expr == null matches both null and undefined
+      return b.binaryExpression('==', expr, b.nullLiteral());
+    }
     case 'symbol':
     case '_array':
     case 'set':
@@ -445,15 +488,16 @@ function hirCodegenMemberExpr(
   hc: HirCodegen,
   object: Parameters<typeof b.memberExpression>[0],
   property: Parameters<typeof b.memberExpression>[1],
+  computed: boolean = false,
 ) {
   if (!hc.disableOptionalChaining)
     return b.optionalMemberExpression(
       object,
       property as b.Expression,
-      false,
+      computed,
       true,
     );
-  return b.memberExpression(object, property);
+  return b.memberExpression(object, property, computed);
 }
 
 function hirCodegenPatternArray(
@@ -521,6 +565,30 @@ function hirCodegenPatternSelect(
   return b.booleanLiteral(true);
 }
 
+function isValidIdentifier(name: string): boolean {
+  return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name);
+}
+
+function hirCodegenPropertyAccess(
+  hc: HirCodegen,
+  object: b.Expression,
+  key: string,
+): b.Expression {
+  if (isValidIdentifier(key)) {
+    return hirCodegenMemberExpr(hc, object, b.identifier(key));
+  }
+  // For non-identifier keys, use computed access: obj["content-type"]
+  if (!hc.disableOptionalChaining) {
+    return b.optionalMemberExpression(
+      object,
+      b.stringLiteral(key),
+      true,
+      true,
+    );
+  }
+  return b.memberExpression(object, b.stringLiteral(key), true);
+}
+
 function hirCodegenPatternObject(
   hc: HirCodegen,
   expr: Expr,
@@ -528,25 +596,8 @@ function hirCodegenPatternObject(
 ): b.Expression {
   const conditionals: Array<b.Expression> = [];
   for (const [key, pat] of Object.entries(obj)) {
-    if (pat.type === 'object') {
-      conditionals.push(
-        hirCodegenPattern(
-          hc,
-          hirCodegenMemberExpr(hc, expr, b.identifier(key)),
-          pat,
-        ),
-      );
-      continue;
-    }
-
-    conditionals.push(
-      // b.binaryExpression("===", b.memberExpression(expr, b.identifier(key)), hirCodegenPattern(expr, pat))
-      hirCodegenPattern(
-        hc,
-        hirCodegenMemberExpr(hc, expr, b.identifier(key)),
-        pat,
-      ),
-    );
+    const memberExpr = hirCodegenPropertyAccess(hc, expr, key);
+    conditionals.push(hirCodegenPattern(hc, memberExpr, pat));
   }
   return concatConditionals(conditionals);
 }
@@ -555,6 +606,12 @@ function hirCodegenPatternLiteral(
   expr: Expr,
   lit: PatternLiteral,
 ): b.Expression {
+  if (lit.type === 'nan') {
+    return b.callExpression(
+      b.memberExpression(b.identifier('Number'), b.identifier('isNaN')),
+      [expr],
+    );
+  }
   return b.binaryExpression('===', expr, patternLiteralToExpr(lit));
 }
 
@@ -567,7 +624,7 @@ function patternLiteralToExpr(lit: PatternLiteral): b.Expression {
       return b.numericLiteral(lit.value);
     }
     case 'boolean': {
-      return b.identifier('undefined');
+      return b.booleanLiteral(lit.value);
     }
     case 'bigint': {
       return b.bigIntLiteral(lit.value);
