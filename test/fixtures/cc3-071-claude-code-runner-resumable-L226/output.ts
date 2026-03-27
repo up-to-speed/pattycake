@@ -10,36 +10,44 @@ declare const blocks: any;
 declare const b: any;
 declare const messages: any;
 declare const separately: any;
-const __result = match(block).with({
-  type: CONTENT_TYPES.TEXT
-}, b => {
-  blocks.push({
-    type: CONTENT_TYPES.TEXT,
-    text: b.value
-  });
-}).with({
-  type: CONTENT_TYPES.CODE
-}, b => {
-  blocks.push({
-    type: CONTENT_TYPES.TEXT,
-    text: formatCodeBlockForText(b.value, b.language)
-  });
-}).with({
-  type: CONTENT_TYPES.IMAGE
-}, b => {
-  if (!isSupportedImageMimeType(b.mimeType)) {
-    throw new Error(`ClaudeCodeRunnerResumable: Unsupported image mime type ${b.mimeType}`);
+let __result;
+__patsy_temp_0: {
+  if (block?.type === CONTENT_TYPES.TEXT) {
+    let b = block;
+    blocks.push({
+      type: CONTENT_TYPES.TEXT,
+      text: b.value
+    });
   }
-  blocks.push({
-    type: CONTENT_TYPES.IMAGE,
-    source: {
-      type: "base64",
-      media_type: b.mimeType,
-      data: b.data
+  if (block?.type === CONTENT_TYPES.CODE) {
+    let b = block;
+    blocks.push({
+      type: CONTENT_TYPES.TEXT,
+      text: formatCodeBlockForText(b.value, b.language)
+    });
+  }
+  if (block?.type === CONTENT_TYPES.IMAGE) {
+    let b = block;
+    if (!isSupportedImageMimeType(b.mimeType)) {
+      throw new Error(`ClaudeCodeRunnerResumable: Unsupported image mime type ${b.mimeType}`);
     }
-  });
-}).with({
-  type: CONTENT_TYPES.TOOL_USE
-}, () => {
-  throw new Error(`ClaudeCodeRunnerResumable: tool_use content blocks are not supported in user messages. Tool use blocks should be handled separately.`);
-}).exhaustive();
+    blocks.push({
+      type: CONTENT_TYPES.IMAGE,
+      source: {
+        type: "base64",
+        media_type: b.mimeType,
+        data: b.data
+      }
+    });
+  }
+  if (block?.type === CONTENT_TYPES.TOOL_USE) {
+    throw new Error(`ClaudeCodeRunnerResumable: tool_use content blocks are not supported in user messages. Tool use blocks should be handled separately.`);
+  }
+  let __patsy__displayedValue;
+  try {
+    __patsy__displayedValue = JSON.stringify(block);
+  } catch (e) {
+    __patsy__displayedValue = block;
+  }
+  throw new Error(`Pattern matching error: no pattern matches value ${__patsy__displayedValue}`);
+}

@@ -13,16 +13,32 @@ declare const needed: any;
 declare const payloads: any;
 declare const record: any;
 declare const nested: any;
-const __result = match(error).with({
-  name: "APIError"
-}, (e: ApiError) => e.data.message).with({
-  name: "ProviderAuthError"
-}, (e: ProviderAuthError) => e.data.message).with({
-  name: "NotFoundError"
-}, (e: NotFoundError) => e.data.message).with({
-  success: false as const
-}, (e: BadRequestError) => e.errors.map((err: Record<string, unknown>) => JSON.stringify(err)).join("; ")).otherwise(() => {
-  if (error instanceof Error) return error.message;
+let __result;
+__patsy_temp_0: {
+  if (error?.name === "APIError") {
+    let e: ApiError = error;
+    __result = e.data.message;
+    break __patsy_temp_0;
+  }
+  if (error?.name === "ProviderAuthError") {
+    let e: ProviderAuthError = error;
+    __result = e.data.message;
+    break __patsy_temp_0;
+  }
+  if (error?.name === "NotFoundError") {
+    let e: NotFoundError = error;
+    __result = e.data.message;
+    break __patsy_temp_0;
+  }
+  if (error?.success === false) {
+    let e: BadRequestError = error;
+    __result = e.errors.map((err: Record<string, unknown>) => JSON.stringify(err)).join("; ");
+    break __patsy_temp_0;
+  }
+  if (error instanceof Error) {
+    __result = error.message;
+    break __patsy_temp_0;
+  }
 
   // NOTE jkoppel 2026.03.01: Codex wrote this part. I'm unconvinced it's actually needed.
   /*
@@ -35,8 +51,13 @@ const __result = match(error).with({
     const nested = typeof record.error === "object" && record.error !== null ? record.error as Record<string, unknown> : null;
     const message = typeof record.message === "string" ? record.message : typeof nested?.message === "string" ? nested.message : null;
     const status = typeof record.statusCode === "number" ? record.statusCode : record.status;
-    if (message) return status !== null ? `${message} (status: ${status})` : message;
-    return JSON.stringify(error);
+    if (message) {
+      __result = status !== null ? `${message} (status: ${status})` : message;
+      break __patsy_temp_0;
+    }
+    __result = JSON.stringify(error);
+    break __patsy_temp_0;
   }
-  return String(error);
-});
+  __result = String(error);
+  break __patsy_temp_0;
+}

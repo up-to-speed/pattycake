@@ -11,10 +11,24 @@ declare const data: any;
 declare const f: any;
 declare const diff: any;
 declare const oldLines: any;
-const __result = match(fileChangesState).with({
-  type: "loading"
-}, () => diffViewerConfig.overscan.overscanBounds.min).with({
-  type: "ready"
-}, ({
-  data
-}) => decideOverscan(diffViewerConfig.overscan, data.map(f => f.diff.oldLines.length))).exhaustive();
+let __result;
+__patsy_temp_0: {
+  if (fileChangesState?.type === "loading") {
+    __result = diffViewerConfig.overscan.overscanBounds.min;
+    break __patsy_temp_0;
+  }
+  if (fileChangesState?.type === "ready") {
+    let {
+      data
+    } = fileChangesState;
+    __result = decideOverscan(diffViewerConfig.overscan, data.map(f => f.diff.oldLines.length));
+    break __patsy_temp_0;
+  }
+  let __patsy__displayedValue;
+  try {
+    __patsy__displayedValue = JSON.stringify(fileChangesState);
+  } catch (e) {
+    __patsy__displayedValue = fileChangesState;
+  }
+  throw new Error(`Pattern matching error: no pattern matches value ${__patsy__displayedValue}`);
+}

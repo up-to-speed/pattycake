@@ -10,33 +10,44 @@ declare const resolve: any;
 declare const ModelProvider: any;
 declare const coupling: any;
 declare const geminiProvider: any;
-const __result = match(provider).with(ModelProvider.ANTHROPIC, async () => {
-  // TODO 2026.01.10 jkoppel: Can we just pass the names through? Will it work? Hate this hidden coupling.
-  // Map full model IDs to Claude Code tier names
-  // TAG_HIDDEN_COUPLING_CLAUDE_NAMES
-  const tierMap: Record<string, string> = {
-    "claude-haiku-4-5": "haiku",
-    "claude-sonnet-4-5": "sonnet",
-    "claude-opus-4-5": "opus",
-    "claude-opus-4-6": "opus"
-  };
-  const tier = tierMap[modelId];
-  if (!tier) {
-    return null;
+let __result;
+__patsy_temp_0: {
+  if (provider === ModelProvider.ANTHROPIC) {
+    // TODO 2026.01.10 jkoppel: Can we just pass the names through? Will it work? Hate this hidden coupling.
+    // Map full model IDs to Claude Code tier names
+    // TAG_HIDDEN_COUPLING_CLAUDE_NAMES
+    const tierMap: Record<string, string> = {
+      "claude-haiku-4-5": "haiku",
+      "claude-sonnet-4-5": "sonnet",
+      "claude-opus-4-5": "opus",
+      "claude-opus-4-6": "opus"
+    };
+    const tier = tierMap[modelId];
+    if (!tier) {
+      __result = null;
+      break __patsy_temp_0;
+    }
+    __result = await claudeCode(tier);
+    break __patsy_temp_0;
   }
-  return await claudeCode(tier);
-}).with(ModelProvider.GOOGLE, async () => {
-  // Gemini CLI uses OAuth authentication
-  const {
-    createGeminiProvider
-  } = await import("ai-sdk-provider-gemini-cli");
-  const geminiProvider = createGeminiProvider({
-    authType: "oauth-personal"
-  });
-  // Note: gemini-cli returns LanguageModelV3, which is compatible with V2
-  return geminiProvider.languageModel(modelId) as LanguageModelV2 & {
-    specificationVersion: "v3";
-  };
-}).with(ModelProvider.OPENAI, async () => {
-  return await codexCliModel(modelId);
-}).otherwise(() => Promise.resolve(null));
+  if (provider === ModelProvider.GOOGLE) {
+    // Gemini CLI uses OAuth authentication
+    const {
+      createGeminiProvider
+    } = await import("ai-sdk-provider-gemini-cli");
+    const geminiProvider = createGeminiProvider({
+      authType: "oauth-personal"
+    });
+    // Note: gemini-cli returns LanguageModelV3, which is compatible with V2
+    __result = geminiProvider.languageModel(modelId) as LanguageModelV2 & {
+      specificationVersion: "v3";
+    };
+    break __patsy_temp_0;
+  }
+  if (provider === ModelProvider.OPENAI) {
+    __result = await codexCliModel(modelId);
+    break __patsy_temp_0;
+  }
+  __result = Promise.resolve(null);
+  break __patsy_temp_0;
+}

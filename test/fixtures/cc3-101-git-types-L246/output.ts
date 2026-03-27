@@ -5,6 +5,43 @@ declare const slice: any;
 declare const exhaustive: any;
 declare const branchRef: any;
 declare const sha: any;
-const __result = match(ref).with(WORKING_TREE, () => "working tree").with(STAGED_ONLY, () => "staged").with(HEAD, () => "HEAD").with(DEFAULT_BRANCH, () => "default branch").with(PARENT_BRANCH, () => "parent branch").with({
-  type: "branch"
-}, branchRef => branchRef.name).with(P.string, sha => sha.length > 7 ? sha.slice(0, 7) : sha).exhaustive();
+let __result;
+__patsy_temp_0: {
+  if (ref === WORKING_TREE) {
+    __result = "working tree";
+    break __patsy_temp_0;
+  }
+  if (ref === STAGED_ONLY) {
+    __result = "staged";
+    break __patsy_temp_0;
+  }
+  if (ref === HEAD) {
+    __result = "HEAD";
+    break __patsy_temp_0;
+  }
+  if (ref === DEFAULT_BRANCH) {
+    __result = "default branch";
+    break __patsy_temp_0;
+  }
+  if (ref === PARENT_BRANCH) {
+    __result = "parent branch";
+    break __patsy_temp_0;
+  }
+  if (ref?.type === "branch") {
+    let branchRef = ref;
+    __result = branchRef.name;
+    break __patsy_temp_0;
+  }
+  if (typeof ref === "string") {
+    let sha = ref;
+    __result = sha.length > 7 ? sha.slice(0, 7) : sha;
+    break __patsy_temp_0;
+  }
+  let __patsy__displayedValue;
+  try {
+    __patsy__displayedValue = JSON.stringify(ref);
+  } catch (e) {
+    __patsy__displayedValue = ref;
+  }
+  throw new Error(`Pattern matching error: no pattern matches value ${__patsy__displayedValue}`);
+}

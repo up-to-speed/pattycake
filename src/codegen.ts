@@ -280,23 +280,17 @@ function hirCodegenPatternThen(
 ): b.BlockStatement {
   // Try to inline function expressions
   if (then.type === 'ArrowFunctionExpression') {
-    if (then.params.some((p) => p.type !== 'Identifier')) {
-      throw new Error(`only identifier param types supported now`);
-    }
     return hirCodegenPatternThenFunction(
       hc,
       expr,
-      then.params as unknown as b.Identifier[],
+      then.params as b.Pattern[],
       then.body,
     );
   } else if (then.type === 'FunctionExpression') {
-    if (then.params.some((p) => p.type !== 'Identifier')) {
-      throw new Error(`only identifier param types supported now`);
-    }
     return hirCodegenPatternThenFunction(
       hc,
       expr,
-      then.params as unknown as b.Identifier[],
+      then.params as b.Pattern[],
       then.body,
     );
   }
@@ -370,7 +364,7 @@ function hirCodegenConstructSelectionExpr(
 function hirCodegenPatternThenFunction(
   hc: HirCodegen,
   expr: Expr,
-  args: b.Identifier[],
+  args: b.Pattern[],
   body: b.BlockStatement | b.Expression,
 ): b.BlockStatement {
   const block: b.Statement[] = [];
@@ -381,7 +375,7 @@ function hirCodegenPatternThenFunction(
     block.push(
       b.variableDeclaration('let', [
         b.variableDeclarator(
-          args[0]!,
+          args[0]! as b.LVal,
           hc.branchCtx.selections === undefined
             ? expr
             : hirCodegenConstructSelectionExpr(hc.branchCtx.selections),
@@ -393,12 +387,12 @@ function hirCodegenPatternThenFunction(
       // The first arg should be bound to the selection
       b.variableDeclaration('let', [
         b.variableDeclarator(
-          args[0]!,
+          args[0]! as b.LVal,
           hirCodegenConstructSelectionExpr(hc.branchCtx.selections),
         ),
       ]),
       // the second arg is the matched expression
-      b.variableDeclaration('let', [b.variableDeclarator(args[1]!, expr)]),
+      b.variableDeclaration('let', [b.variableDeclarator(args[1]! as b.LVal, expr)]),
     );
   }
 
@@ -468,6 +462,10 @@ function hirCodegenPattern(
     }
     case 'select': {
       return hirCodegenPatternSelect(hc, expr, pattern.value);
+    }
+    case 'expression': {
+      // Runtime equality comparison: expr === <runtime value>
+      return b.binaryExpression('===', expr, pattern.value);
     }
   }
 }

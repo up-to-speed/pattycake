@@ -7,16 +7,35 @@ declare const failed: any;
 declare const exhaustive: any;
 declare const TaskProgress: any;
 declare const error: any;
-const __result = match(outcome).with({
-  status: "success"
-}, () => TaskProgress.completed()).with({
-  status: "cancelled"
-}, () => TaskProgress.cancelled()).with({
-  status: "failed"
-}, ({
-  message
-}) => TaskProgress.failed(message)).with({
-  status: "exception"
-}, ({
-  error
-}) => TaskProgress.failed(error.message)).exhaustive();
+let __result;
+__patsy_temp_0: {
+  if (outcome?.status === "success") {
+    __result = TaskProgress.completed();
+    break __patsy_temp_0;
+  }
+  if (outcome?.status === "cancelled") {
+    __result = TaskProgress.cancelled();
+    break __patsy_temp_0;
+  }
+  if (outcome?.status === "failed") {
+    let {
+      message
+    } = outcome;
+    __result = TaskProgress.failed(message);
+    break __patsy_temp_0;
+  }
+  if (outcome?.status === "exception") {
+    let {
+      error
+    } = outcome;
+    __result = TaskProgress.failed(error.message);
+    break __patsy_temp_0;
+  }
+  let __patsy__displayedValue;
+  try {
+    __patsy__displayedValue = JSON.stringify(outcome);
+  } catch (e) {
+    __patsy__displayedValue = outcome;
+  }
+  throw new Error(`Pattern matching error: no pattern matches value ${__patsy__displayedValue}`);
+}

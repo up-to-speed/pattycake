@@ -7,19 +7,34 @@ declare const createGoogleGenerativeAI: any;
 declare const createAnthropic: any;
 declare const exhaustive: any;
 declare const ModelProvider: any;
-const __result = match(builtin).with(ModelProvider.OPENAI, () => {
-  const provider = createOpenAI({
-    apiKey
-  });
-  return provider(modelId);
-}).with(ModelProvider.GOOGLE, () => {
-  const provider = createGoogleGenerativeAI({
-    apiKey
-  });
-  return provider(modelId);
-}).with(ModelProvider.ANTHROPIC, () => {
-  const provider = createAnthropic({
-    apiKey
-  });
-  return provider(modelId);
-}).exhaustive();
+let __result;
+__patsy_temp_0: {
+  if (builtin === ModelProvider.OPENAI) {
+    const provider = createOpenAI({
+      apiKey
+    });
+    __result = provider(modelId);
+    break __patsy_temp_0;
+  }
+  if (builtin === ModelProvider.GOOGLE) {
+    const provider = createGoogleGenerativeAI({
+      apiKey
+    });
+    __result = provider(modelId);
+    break __patsy_temp_0;
+  }
+  if (builtin === ModelProvider.ANTHROPIC) {
+    const provider = createAnthropic({
+      apiKey
+    });
+    __result = provider(modelId);
+    break __patsy_temp_0;
+  }
+  let __patsy__displayedValue;
+  try {
+    __patsy__displayedValue = JSON.stringify(builtin);
+  } catch (e) {
+    __patsy__displayedValue = builtin;
+  }
+  throw new Error(`Pattern matching error: no pattern matches value ${__patsy__displayedValue}`);
+}

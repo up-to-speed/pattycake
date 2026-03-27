@@ -50,7 +50,10 @@ export type Pattern =
   // https://github.com/gvergnaud/ts-pattern/tree/main#pwhen-patterns
   | { type: 'when'; value: unknown }
   | { type: 'not'; subpattern: Pattern }
-  | { type: 'select'; value: PatternSelect };
+  | { type: 'select'; value: PatternSelect }
+  // Runtime expression comparison: matches when expr === value at runtime
+  // Used for identifier references (e.g. WORKING_TREE) and member expressions (e.g. StorageKind.JSONL)
+  | { type: 'expression'; value: b.Expression };
 
 /**
  * https://github.com/gvergnaud/ts-pattern#literals
@@ -349,6 +352,17 @@ function transformExprToPattern(ht: HirTransform, expr: b.Expression): Pattern {
       expr.callee.property,
       expr.arguments,
     );
+  }
+
+  // Handle TSAsExpression: unwrap `expr as Type` to get the underlying expression
+  if (b.isTSAsExpression(expr)) {
+    return transformExprToPattern(ht, expr.expression);
+  }
+
+  // Handle bare identifiers (e.g. WORKING_TREE, HEAD) and member expressions
+  // (e.g. StorageKind.JSONL, CONTENT_TYPES.TEXT) as runtime equality comparisons
+  if (b.isIdentifier(expr) || b.isMemberExpression(expr)) {
+    return { type: 'expression', value: expr };
   }
 
   // TODO: fallback to runtime check

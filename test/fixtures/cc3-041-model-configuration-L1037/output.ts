@@ -14,49 +14,75 @@ declare const languageModel: any;
 declare const ModelProvider: any;
 declare const logger: any;
 declare const geminiProxyProvider: any;
-const __result = match(config).with({
-  type: "api-key"
-}, ({
-  apiKey
-}) => {
-  if (!apiKey) {
-    return null;
-  }
+let __result;
+__patsy_temp_0: {
+  if (config?.type === "api-key") {
+    let {
+      apiKey
+    } = config;
+    if (!apiKey) {
+      __result = null;
+      break __patsy_temp_0;
+    }
 
-  // Use API key (existing logic)
-  return match(builtin).with(ModelProvider.OPENAI, () => {
-    const provider = createOpenAI({
-      apiKey
-    });
-    return provider(modelId);
-  }).with(ModelProvider.GOOGLE, () => {
-    const provider = createGoogleGenerativeAI({
-      apiKey
-    });
-    return provider(modelId);
-  }).with(ModelProvider.ANTHROPIC, () => {
-    const provider = createAnthropic({
-      apiKey
-    });
-    return provider(modelId);
-  }).exhaustive();
-}).with({
-  type: "cli-subscription"
-}, async () => {
-  // Use CLI provider
-  return await getCliModel(builtin, modelId);
-}).with({
-  type: "cc-credits"
-}, () => {
-  // Use Command Center's Gemini proxy (only for Google)
-  if (builtin !== ModelProvider.GOOGLE) {
-    logger.warn("[Model Config] cc-credits auth type used with non-Google provider");
-    return null;
+    // Use API key (existing logic)
+    __patsy_temp_0: {
+      if (builtin === ModelProvider.OPENAI) {
+        const provider = createOpenAI({
+          apiKey
+        });
+        __result = provider(modelId);
+        break __patsy_temp_0;
+      }
+      if (builtin === ModelProvider.GOOGLE) {
+        const provider = createGoogleGenerativeAI({
+          apiKey
+        });
+        __result = provider(modelId);
+        break __patsy_temp_0;
+      }
+      if (builtin === ModelProvider.ANTHROPIC) {
+        const provider = createAnthropic({
+          apiKey
+        });
+        __result = provider(modelId);
+        break __patsy_temp_0;
+      }
+      let __patsy__displayedValue;
+      try {
+        __patsy__displayedValue = JSON.stringify(builtin);
+      } catch (e) {
+        __patsy__displayedValue = builtin;
+      }
+      throw new Error(`Pattern matching error: no pattern matches value ${__patsy__displayedValue}`);
+    }
+    break __patsy_temp_0;
   }
-  const geminiProxyProvider = createGoogleGenerativeAI({
-    name: GEMINI_PROXY_PROVIDER_ID,
-    baseURL: GEMINI_PROXY_BASE_URL,
-    apiKey: GEMINI_PROXY_API_KEY
-  });
-  return geminiProxyProvider.languageModel(modelId);
-}).exhaustive();
+  if (config?.type === "cli-subscription") {
+    // Use CLI provider
+    __result = await getCliModel(builtin, modelId);
+    break __patsy_temp_0;
+  }
+  if (config?.type === "cc-credits") {
+    // Use Command Center's Gemini proxy (only for Google)
+    if (builtin !== ModelProvider.GOOGLE) {
+      logger.warn("[Model Config] cc-credits auth type used with non-Google provider");
+      __result = null;
+      break __patsy_temp_0;
+    }
+    const geminiProxyProvider = createGoogleGenerativeAI({
+      name: GEMINI_PROXY_PROVIDER_ID,
+      baseURL: GEMINI_PROXY_BASE_URL,
+      apiKey: GEMINI_PROXY_API_KEY
+    });
+    __result = geminiProxyProvider.languageModel(modelId);
+    break __patsy_temp_0;
+  }
+  let __patsy__displayedValue;
+  try {
+    __patsy__displayedValue = JSON.stringify(config);
+  } catch (e) {
+    __patsy__displayedValue = config;
+  }
+  throw new Error(`Pattern matching error: no pattern matches value ${__patsy__displayedValue}`);
+}
