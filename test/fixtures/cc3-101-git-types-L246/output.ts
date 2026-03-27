@@ -7,23 +7,23 @@ declare const branchRef: any;
 declare const sha: any;
 let __result;
 __patsy_temp_0: {
-  if (ref === WORKING_TREE) {
+  if (Object.is(ref, WORKING_TREE)) {
     __result = "working tree";
     break __patsy_temp_0;
   }
-  if (ref === STAGED_ONLY) {
+  if (Object.is(ref, STAGED_ONLY)) {
     __result = "staged";
     break __patsy_temp_0;
   }
-  if (ref === HEAD) {
+  if (Object.is(ref, HEAD)) {
     __result = "HEAD";
     break __patsy_temp_0;
   }
-  if (ref === DEFAULT_BRANCH) {
+  if (Object.is(ref, DEFAULT_BRANCH)) {
     __result = "default branch";
     break __patsy_temp_0;
   }
-  if (ref === PARENT_BRANCH) {
+  if (Object.is(ref, PARENT_BRANCH)) {
     __result = "parent branch";
     break __patsy_temp_0;
   }

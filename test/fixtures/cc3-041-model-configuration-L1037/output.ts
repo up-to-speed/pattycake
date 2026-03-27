@@ -27,21 +27,21 @@ __patsy_temp_0: {
 
     // Use API key (existing logic)
     __patsy_temp_0: {
-      if (builtin === ModelProvider.OPENAI) {
+      if (Object.is(builtin, ModelProvider.OPENAI)) {
         const provider = createOpenAI({
           apiKey
         });
         __result = provider(modelId);
         break __patsy_temp_0;
       }
-      if (builtin === ModelProvider.GOOGLE) {
+      if (Object.is(builtin, ModelProvider.GOOGLE)) {
         const provider = createGoogleGenerativeAI({
           apiKey
         });
         __result = provider(modelId);
         break __patsy_temp_0;
       }
-      if (builtin === ModelProvider.ANTHROPIC) {
+      if (Object.is(builtin, ModelProvider.ANTHROPIC)) {
         const provider = createAnthropic({
           apiKey
         });

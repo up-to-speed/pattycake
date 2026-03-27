@@ -8,11 +8,11 @@ declare const StorageKind: any;
 declare const options: any;
 let __result;
 __patsy_temp_0: {
-  if (kind === StorageKind.JSONL) {
+  if (Object.is(kind, StorageKind.JSONL)) {
     __result = new JSONLStorageComponent(filePath, schema, options.versioning, options.fileMode);
     break __patsy_temp_0;
   }
-  if (kind === StorageKind.JSON) {
+  if (Object.is(kind, StorageKind.JSON)) {
     __result = new JSONStorageComponent(filePath, schema, options.versioning, options.fileMode);
     break __patsy_temp_0;
   }

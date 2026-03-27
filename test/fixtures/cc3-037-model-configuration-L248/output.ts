@@ -12,7 +12,7 @@ declare const coupling: any;
 declare const geminiProvider: any;
 let __result;
 __patsy_temp_0: {
-  if (provider === ModelProvider.ANTHROPIC) {
+  if (Object.is(provider, ModelProvider.ANTHROPIC)) {
     // TODO 2026.01.10 jkoppel: Can we just pass the names through? Will it work? Hate this hidden coupling.
     // Map full model IDs to Claude Code tier names
     // TAG_HIDDEN_COUPLING_CLAUDE_NAMES
@@ -30,7 +30,7 @@ __patsy_temp_0: {
     __result = await claudeCode(tier);
     break __patsy_temp_0;
   }
-  if (provider === ModelProvider.GOOGLE) {
+  if (Object.is(provider, ModelProvider.GOOGLE)) {
     // Gemini CLI uses OAuth authentication
     const {
       createGeminiProvider
@@ -44,7 +44,7 @@ __patsy_temp_0: {
     };
     break __patsy_temp_0;
   }
-  if (provider === ModelProvider.OPENAI) {
+  if (Object.is(provider, ModelProvider.OPENAI)) {
     __result = await codexCliModel(modelId);
     break __patsy_temp_0;
   }

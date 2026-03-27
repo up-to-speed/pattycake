@@ -14,7 +14,7 @@ declare const messages: any;
 declare const separately: any;
 let __result;
 __patsy_temp_0: {
-  if (block?.type === CONTENT_TYPES.TEXT) {
+  if (Object.is(block?.type, CONTENT_TYPES.TEXT)) {
     let b = block;
     __result = {
       type: CONTENT_TYPES.TEXT,
@@ -22,7 +22,7 @@ __patsy_temp_0: {
     };
     break __patsy_temp_0;
   }
-  if (block?.type === CONTENT_TYPES.CODE) {
+  if (Object.is(block?.type, CONTENT_TYPES.CODE)) {
     let b = block;
     __result = {
       // Codex SDK doesn't have separate code blocks, format as text
@@ -31,7 +31,7 @@ __patsy_temp_0: {
     };
     break __patsy_temp_0;
   }
-  if (block?.type === CONTENT_TYPES.IMAGE) {
+  if (Object.is(block?.type, CONTENT_TYPES.IMAGE)) {
     let b = block;
     const imageId = createImageId();
     const imageBuffer = Buffer.from(b.data, "base64");
@@ -44,7 +44,7 @@ __patsy_temp_0: {
     };
     break __patsy_temp_0;
   }
-  if (block?.type === CONTENT_TYPES.TOOL_USE) {
+  if (Object.is(block?.type, CONTENT_TYPES.TOOL_USE)) {
     throw new Error(`buildCodexUserInput: tool_use content blocks are not supported in user messages. Tool use blocks should be handled separately.`);
   }
   let __patsy__displayedValue;

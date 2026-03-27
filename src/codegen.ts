@@ -361,6 +361,27 @@ function hirCodegenConstructSelectionExpr(
   return b.objectExpression(properties);
 }
 
+/**
+ * Extracts a simple LVal and wraps the initializer if needed for special param types:
+ * - RestElement (...args): bind `args` to `[initExpr]` (rest collects into array)
+ * - AssignmentPattern (x = default): bind `x` to `initExpr` (default is unused since match always provides a value)
+ * - Identifier / ObjectPattern / ArrayPattern: use as-is
+ */
+function paramToBinding(
+  param: b.Pattern,
+  initExpr: b.Expression,
+): { lval: b.LVal; init: b.Expression } {
+  if (b.isRestElement(param)) {
+    // (...args) => ... : args should be [matchedValue]
+    return { lval: param.argument as b.LVal, init: b.arrayExpression([initExpr]) };
+  }
+  if (b.isAssignmentPattern(param)) {
+    // (x = 1) => ... : x should be matchedValue (default is irrelevant)
+    return { lval: param.left as b.LVal, init: initExpr };
+  }
+  return { lval: param as b.LVal, init: initExpr };
+}
+
 function hirCodegenPatternThenFunction(
   hc: HirCodegen,
   expr: Expr,
@@ -372,27 +393,20 @@ function hirCodegenPatternThenFunction(
   if (args.length > 1 && hc.branchCtx.selections === undefined) {
     throw new Error('unimplemented more than one arg on result function');
   } else if (args.length === 1) {
+    const valueExpr = hc.branchCtx.selections === undefined
+      ? expr
+      : hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
+    const { lval, init } = paramToBinding(args[0]!, valueExpr);
     block.push(
-      b.variableDeclaration('let', [
-        b.variableDeclarator(
-          args[0]! as b.LVal,
-          hc.branchCtx.selections === undefined
-            ? expr
-            : hirCodegenConstructSelectionExpr(hc.branchCtx.selections),
-        ),
-      ]),
+      b.variableDeclaration('let', [b.variableDeclarator(lval, init)]),
     );
   } else if (args.length === 2 && hc.branchCtx.selections !== undefined) {
+    const selExpr = hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
+    const { lval: lval0, init: init0 } = paramToBinding(args[0]!, selExpr);
+    const { lval: lval1, init: init1 } = paramToBinding(args[1]!, expr);
     block.push(
-      // The first arg should be bound to the selection
-      b.variableDeclaration('let', [
-        b.variableDeclarator(
-          args[0]! as b.LVal,
-          hirCodegenConstructSelectionExpr(hc.branchCtx.selections),
-        ),
-      ]),
-      // the second arg is the matched expression
-      b.variableDeclaration('let', [b.variableDeclarator(args[1]! as b.LVal, expr)]),
+      b.variableDeclaration('let', [b.variableDeclarator(lval0, init0)]),
+      b.variableDeclaration('let', [b.variableDeclarator(lval1, init1)]),
     );
   }
 
@@ -464,8 +478,11 @@ function hirCodegenPattern(
       return hirCodegenPatternSelect(hc, expr, pattern.value);
     }
     case 'expression': {
-      // Runtime equality comparison: expr === <runtime value>
-      return b.binaryExpression('===', expr, pattern.value);
+      // Runtime equality comparison using Object.is() for correct NaN/-0 semantics
+      return b.callExpression(
+        b.memberExpression(b.identifier('Object'), b.identifier('is')),
+        [expr, pattern.value],
+      );
     }
   }
 }

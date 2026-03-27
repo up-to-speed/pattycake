@@ -13,28 +13,28 @@ declare const pathModule: any;
 declare const fs: any;
 let __result;
 __patsy_temp_0: {
-  if (commitReference === STAGED_ONLY) {
+  if (Object.is(commitReference, STAGED_ONLY)) {
     // For staged files, use the index/staging area
     __result = runWithShadowCheck(MonitoredGitOps.showStagedFile(path, filePath));
     break __patsy_temp_0;
   }
-  if (commitReference === WORKING_TREE) {
+  if (Object.is(commitReference, WORKING_TREE)) {
     // For working tree, just read the file directly
     const fs = await import("node:fs/promises");
     const fullPath = pathModule.join(path, filePath);
     __result = await fs.readFile(fullPath, "utf8");
     break __patsy_temp_0;
   }
-  if (commitReference === HEAD) {
+  if (Object.is(commitReference, HEAD)) {
     __result = showFile("HEAD");
     break __patsy_temp_0;
   }
-  if (commitReference === DEFAULT_BRANCH) {
+  if (Object.is(commitReference, DEFAULT_BRANCH)) {
     const resolvedRef = await this.resolveGitRef(path, DEFAULT_BRANCH);
     __result = showFile(String(resolvedRef));
     break __patsy_temp_0;
   }
-  if (commitReference === PARENT_BRANCH) {
+  if (Object.is(commitReference, PARENT_BRANCH)) {
     const resolvedRef = await this.resolveGitRef(path, PARENT_BRANCH);
     __result = showFile(String(resolvedRef));
     break __patsy_temp_0;

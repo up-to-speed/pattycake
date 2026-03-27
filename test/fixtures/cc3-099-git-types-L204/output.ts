@@ -5,23 +5,23 @@ declare const exhaustive: any;
 declare const branchRef: any;
 let __result;
 __patsy_temp_0: {
-  if (ref === WORKING_TREE) {
+  if (Object.is(ref, WORKING_TREE)) {
     __result = WORKING_TREE_STRING;
     break __patsy_temp_0;
   }
-  if (ref === STAGED_ONLY) {
+  if (Object.is(ref, STAGED_ONLY)) {
     __result = STAGED_ONLY_STRING;
     break __patsy_temp_0;
   }
-  if (ref === HEAD) {
+  if (Object.is(ref, HEAD)) {
     __result = HEAD_STRING;
     break __patsy_temp_0;
   }
-  if (ref === DEFAULT_BRANCH) {
+  if (Object.is(ref, DEFAULT_BRANCH)) {
     __result = DEFAULT_BRANCH_STRING;
     break __patsy_temp_0;
   }
-  if (ref === PARENT_BRANCH) {
+  if (Object.is(ref, PARENT_BRANCH)) {
     __result = PARENT_BRANCH_STRING;
     break __patsy_temp_0;
   }

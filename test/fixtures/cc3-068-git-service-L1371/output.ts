@@ -4,23 +4,23 @@ declare const with: any;
 declare const exhaustive: any;
 let __result;
 __patsy_temp_0: {
-  if (commitReference === STAGED_ONLY) {
+  if (Object.is(commitReference, STAGED_ONLY)) {
     __result = isStagedFileError;
     break __patsy_temp_0;
   }
-  if (commitReference === WORKING_TREE) {
+  if (Object.is(commitReference, WORKING_TREE)) {
     __result = false;
     break __patsy_temp_0;
   }
-  if (commitReference === HEAD) {
+  if (Object.is(commitReference, HEAD)) {
     __result = false;
     break __patsy_temp_0;
   }
-  if (commitReference === DEFAULT_BRANCH) {
+  if (Object.is(commitReference, DEFAULT_BRANCH)) {
     __result = false;
     break __patsy_temp_0;
   }
-  if (commitReference === PARENT_BRANCH) {
+  if (Object.is(commitReference, PARENT_BRANCH)) {
     __result = false;
     break __patsy_temp_0;
   }

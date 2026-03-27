@@ -12,21 +12,21 @@ declare const messages: any;
 declare const separately: any;
 let __result;
 __patsy_temp_0: {
-  if (block?.type === CONTENT_TYPES.TEXT) {
+  if (Object.is(block?.type, CONTENT_TYPES.TEXT)) {
     let b = block;
     blocks.push({
       type: CONTENT_TYPES.TEXT,
       text: b.value
     });
   }
-  if (block?.type === CONTENT_TYPES.CODE) {
+  if (Object.is(block?.type, CONTENT_TYPES.CODE)) {
     let b = block;
     blocks.push({
       type: CONTENT_TYPES.TEXT,
       text: formatCodeBlockForText(b.value, b.language)
     });
   }
-  if (block?.type === CONTENT_TYPES.IMAGE) {
+  if (Object.is(block?.type, CONTENT_TYPES.IMAGE)) {
     let b = block;
     if (!isSupportedImageMimeType(b.mimeType)) {
       throw new Error(`ClaudeCodeRunnerResumable: Unsupported image mime type ${b.mimeType}`);
@@ -40,7 +40,7 @@ __patsy_temp_0: {
       }
     });
   }
-  if (block?.type === CONTENT_TYPES.TOOL_USE) {
+  if (Object.is(block?.type, CONTENT_TYPES.TOOL_USE)) {
     throw new Error(`ClaudeCodeRunnerResumable: tool_use content blocks are not supported in user messages. Tool use blocks should be handled separately.`);
   }
   let __patsy__displayedValue;
