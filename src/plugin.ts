@@ -16,6 +16,11 @@ export const unplugin = createUnplugin((options: Opts) => {
       return /\.[jt]s[x]?$/.test(id);
     },
     async transform(code: string, id: string) {
+      // Fast bail: skip files that don't use ts-pattern
+      if (!code.includes('ts-pattern')) {
+        return null;
+      }
+
       const plugins: PluginItem[] = [[pluginSyntaxJsx]];
 
       const isTypescript = /\.ts[x]?$/.test(id);
@@ -28,9 +33,13 @@ export const unplugin = createUnplugin((options: Opts) => {
 
       plugins.push([babelPlugin, options]);
 
-      const result = await transformAsync(code, { plugins, filename: id });
-
-      return result?.code || null;
+      try {
+        const result = await transformAsync(code, { plugins, filename: id });
+        return result?.code || null;
+      } catch {
+        // Fall back to original code if pattycake can't handle this file
+        return null;
+      }
     },
   };
 });

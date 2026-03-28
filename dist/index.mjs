@@ -961,6 +961,9 @@ var unplugin = createUnplugin((options) => {
       return /\.[jt]s[x]?$/.test(id);
     },
     async transform(code, id) {
+      if (!code.includes("ts-pattern")) {
+        return null;
+      }
       const plugins = [[pluginSyntaxJsx]];
       const isTypescript = /\.ts[x]?$/.test(id);
       if (isTypescript) {
@@ -970,8 +973,12 @@ var unplugin = createUnplugin((options) => {
         ]);
       }
       plugins.push([babelPlugin, options]);
-      const result = await transformAsync(code, { plugins, filename: id });
-      return result?.code || null;
+      try {
+        const result = await transformAsync(code, { plugins, filename: id });
+        return result?.code || null;
+      } catch {
+        return null;
+      }
     }
   };
 });

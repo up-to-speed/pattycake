@@ -1004,6 +1004,9 @@ var unplugin = (0, import_unplugin.createUnplugin)((options) => {
       return /\.[jt]s[x]?$/.test(id);
     },
     async transform(code, id) {
+      if (!code.includes("ts-pattern")) {
+        return null;
+      }
       const plugins = [[import_plugin_syntax_jsx.default]];
       const isTypescript = /\.ts[x]?$/.test(id);
       if (isTypescript) {
@@ -1013,8 +1016,12 @@ var unplugin = (0, import_unplugin.createUnplugin)((options) => {
         ]);
       }
       plugins.push([babelPlugin, options]);
-      const result = await (0, import_core.transformAsync)(code, { plugins, filename: id });
-      return result?.code || null;
+      try {
+        const result = await (0, import_core.transformAsync)(code, { plugins, filename: id });
+        return result?.code || null;
+      } catch {
+        return null;
+      }
     }
   };
 });
