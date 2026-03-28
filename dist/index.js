@@ -233,7 +233,7 @@ function transformExprToPattern(ht, expr) {
   if (b.isIdentifier(expr) || b.isMemberExpression(expr)) {
     return { type: "expression", value: expr };
   }
-  throw new Error(`unimplemented ${expr.type}`);
+  throw new Error(`unsupported pattern expression: ${expr.type}`);
 }
 function transformToComplexTsPattern(ht, functionName, args) {
   switch (functionName.name) {
@@ -252,10 +252,26 @@ function transformToComplexTsPattern(ht, functionName, args) {
       });
       return { type: "union", patterns };
     }
+    case "when": {
+      const predicate = args[0];
+      if (!predicate || !b.isExpression(predicate)) {
+        throw new Error("P.when() requires a predicate function argument");
+      }
+      return { type: "when", predicate };
+    }
+    case "intersection": {
+      const patterns = args.map((arg) => {
+        if (!b.isExpression(arg))
+          throw new Error(
+            "Only expressions are supported for `P.intersection()`"
+          );
+        return transformExprToPattern(ht, arg);
+      });
+      return { type: "intersection", patterns };
+    }
     case "_array":
     case "set":
     case "map":
-    case "when":
     case "not":
     default: {
       throw new Error(
@@ -671,11 +687,21 @@ function hirCodegenPattern(hc, expr, pattern) {
     case "nullish": {
       return b2.binaryExpression("==", expr, b2.nullLiteral());
     }
+    case "when": {
+      return b2.callExpression(pattern.predicate, [expr]);
+    }
+    case "intersection": {
+      const checks = pattern.patterns.map(
+        (subPattern) => hirCodegenPattern(hc, expr, subPattern)
+      );
+      return checks.reduce(
+        (acc, check) => b2.logicalExpression("&&", acc, check)
+      );
+    }
     case "symbol":
     case "_array":
     case "set":
     case "map":
-    case "when":
     case "not": {
       throw new Error(`unimplemented pattern: ${pattern.type}`);
     }

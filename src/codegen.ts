@@ -522,11 +522,23 @@ function hirCodegenPattern(
       // expr == null matches both null and undefined
       return b.binaryExpression('==', expr, b.nullLiteral());
     }
+    case 'when': {
+      // P.when(predicate) compiles to: predicate(expr)
+      return b.callExpression(pattern.predicate, [expr]);
+    }
+    case 'intersection': {
+      // P.intersection(p1, p2, ...) compiles to: p1_check && p2_check && ...
+      const checks = pattern.patterns.map((subPattern) =>
+        hirCodegenPattern(hc, expr, subPattern),
+      );
+      return checks.reduce((acc, check) =>
+        b.logicalExpression('&&', acc, check),
+      );
+    }
     case 'symbol':
     case '_array':
     case 'set':
     case 'map':
-    case 'when':
     case 'not': {
       throw new Error(`unimplemented pattern: ${pattern.type}`);
     }

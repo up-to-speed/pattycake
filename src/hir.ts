@@ -48,14 +48,16 @@ export type Pattern =
   | { type: 'set'; subpattern: Pattern }
   | { type: 'map'; key: Pattern; value: Pattern }
   // https://github.com/gvergnaud/ts-pattern/tree/main#pwhen-patterns
-  | { type: 'when'; value: unknown }
+  | { type: 'when'; predicate: b.Expression }
   | { type: 'not'; subpattern: Pattern }
   | { type: 'select'; value: PatternSelect }
   // Runtime expression comparison: matches when expr === value at runtime
   // Used for identifier references (e.g. WORKING_TREE) and member expressions (e.g. StorageKind.JSONL)
   | { type: 'expression'; value: b.Expression }
   // P.union(...patterns): matches if any of the subpatterns match
-  | { type: 'union'; patterns: Pattern[] };
+  | { type: 'union'; patterns: Pattern[] }
+  // P.intersection(...patterns): matches if ALL subpatterns match
+  | { type: 'intersection'; patterns: Pattern[] };
 
 /**
  * https://github.com/gvergnaud/ts-pattern#literals
@@ -367,8 +369,11 @@ function transformExprToPattern(ht: HirTransform, expr: b.Expression): Pattern {
     return { type: 'expression', value: expr };
   }
 
-  // TODO: fallback to runtime check
-  throw new Error(`unimplemented ${expr.type}`);
+  // Handle call expressions that are P.* pattern helpers we haven't implemented
+  // (e.g. P.string.startsWith(prefix), P.number.gte(5), etc.)
+  // These are valid ts-pattern patterns but we can't compile them yet.
+  // Throw so the match expression falls back to ts-pattern runtime.
+  throw new Error(`unsupported pattern expression: ${expr.type}`);
 }
 
 function transformToComplexTsPattern(
@@ -392,10 +397,26 @@ function transformToComplexTsPattern(
       });
       return { type: 'union', patterns };
     }
+    case 'when': {
+      const predicate = args[0];
+      if (!predicate || !b.isExpression(predicate)) {
+        throw new Error('P.when() requires a predicate function argument');
+      }
+      return { type: 'when', predicate };
+    }
+    case 'intersection': {
+      const patterns = args.map((arg) => {
+        if (!b.isExpression(arg))
+          throw new Error(
+            'Only expressions are supported for `P.intersection()`',
+          );
+        return transformExprToPattern(ht, arg);
+      });
+      return { type: 'intersection', patterns };
+    }
     case '_array':
     case 'set':
     case 'map':
-    case 'when':
     case 'not':
     default: {
       throw new Error(
