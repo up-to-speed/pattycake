@@ -582,6 +582,12 @@ function hirCodegenPatternThenFunction(hc, expr, args, body) {
   } else {
     hirCodegenRewriteReturns(hc, body);
     block.push(...body.body);
+    if (hc.kind === "iife") {
+      const last = block[block.length - 1];
+      if (!last || !b2.isReturnStatement(last)) {
+        block.push(b2.returnStatement(null));
+      }
+    }
   }
   return b2.blockStatement(block);
 }
@@ -634,10 +640,43 @@ function hirCodegenPattern(hc, expr, pattern) {
       return hirCodegenPatternSelect(hc, expr, pattern.value);
     }
     case "expression": {
-      return b2.callExpression(
+      const patId = pattern.value;
+      const objectIs = b2.callExpression(
         b2.memberExpression(b2.identifier("Object"), b2.identifier("is")),
-        [expr, pattern.value]
+        [expr, patId]
       );
+      const isObject = b2.logicalExpression(
+        "&&",
+        b2.binaryExpression("===", b2.unaryExpression("typeof", patId), b2.stringLiteral("object")),
+        b2.binaryExpression("!==", patId, b2.nullLiteral())
+      );
+      const kParam = b2.identifier("k");
+      const everyCheck = b2.callExpression(
+        b2.memberExpression(
+          b2.callExpression(
+            b2.memberExpression(b2.identifier("Object"), b2.identifier("keys")),
+            [patId]
+          ),
+          b2.identifier("every")
+        ),
+        [
+          b2.arrowFunctionExpression(
+            [kParam],
+            b2.logicalExpression(
+              "&&",
+              b2.binaryExpression("!=", expr, b2.nullLiteral()),
+              b2.callExpression(
+                b2.memberExpression(b2.identifier("Object"), b2.identifier("is")),
+                [
+                  b2.memberExpression(expr, kParam, true),
+                  b2.memberExpression(patId, kParam, true)
+                ]
+              )
+            )
+          )
+        ]
+      );
+      return b2.conditionalExpression(isObject, everyCheck, objectIs);
     }
     case "union": {
       const checks = pattern.patterns.map(

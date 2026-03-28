@@ -464,6 +464,15 @@ function hirCodegenPatternThenFunction(
   } else {
     hirCodegenRewriteReturns(hc, body);
     block.push(...body.body);
+    // In IIFE mode, void block bodies (side-effect-only callbacks) need an
+    // explicit return so execution doesn't fall through to subsequent branches
+    // or the exhaustive-error throw.
+    if (hc.kind === 'iife') {
+      const last = block[block.length - 1];
+      if (!last || !b.isReturnStatement(last)) {
+        block.push(b.returnStatement(null));
+      }
+    }
   }
 
   return b.blockStatement(block);

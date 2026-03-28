@@ -169,6 +169,27 @@ export { actual };
     expect(mod.actual).not.toHaveProperty('bar');
   });
 
+  // Bug: void-returning match arms in IIFE mode fall through to exhaustive throw
+  it('void callbacks in exhaustive match do not fall through to throw', async () => {
+    const mod = await importTransformedModule(`
+import { match } from 'ts-pattern';
+
+let called = '';
+function test(type) {
+  match({ type })
+    .with({ type: 'a' }, () => { called = 'a'; })
+    .with({ type: 'b' }, () => { called = 'b'; })
+    .with({ type: 'c' }, () => { called = 'c'; })
+    .exhaustive();
+}
+test('b');
+
+export { called };
+`);
+
+    expect(mod.called).toBe('b');
+  });
+
   // Bug: rest parameter in handler with P.select() only gets selection, not both args
   it('passes both selection and matchExpr to rest parameter with P.select()', async () => {
     const mod = await importTransformedModule(`
