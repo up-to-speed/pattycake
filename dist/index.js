@@ -445,12 +445,14 @@ function hirCodegen(hc, hir) {
         hc.hasAsync = true;
       const block = [];
       if (fn.params.length >= 1) {
-        const { lval, init } = paramToBinding(fn.params[0], expr);
-        block.push(
-          b2.variableDeclaration("let", [
-            b2.variableDeclarator(lval, init)
-          ])
-        );
+        const { lval, init, skip } = paramToBinding(fn.params[0], expr);
+        if (!skip) {
+          block.push(
+            b2.variableDeclaration("let", [
+              b2.variableDeclarator(lval, init)
+            ])
+          );
+        }
       }
       if (fn.body.type !== "BlockStatement") {
         block.push(...hirCodegenOutput(hc, fn.body));
@@ -616,6 +618,9 @@ function paramToBinding(param, initExpr) {
   if (b2.isAssignmentPattern(param)) {
     return { lval: b2.arrayPattern([param]), init: b2.arrayExpression([initExpr]) };
   }
+  if (b2.isIdentifier(param) && b2.isIdentifier(initExpr) && param.name === initExpr.name) {
+    return { lval: param, init: initExpr, skip: true };
+  }
   return { lval: param, init: initExpr };
 }
 function hirCodegenPatternThenFunction(hc, expr, args, body) {
@@ -633,19 +638,23 @@ function hirCodegenPatternThenFunction(hc, expr, args, body) {
       );
     } else {
       const valueExpr = hc.branchCtx.selections === void 0 ? expr : hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
-      const { lval, init } = paramToBinding(param, valueExpr);
-      block.push(
-        b2.variableDeclaration("let", [b2.variableDeclarator(lval, init)])
-      );
+      const { lval, init, skip } = paramToBinding(param, valueExpr);
+      if (!skip) {
+        block.push(
+          b2.variableDeclaration("let", [b2.variableDeclarator(lval, init)])
+        );
+      }
     }
   } else if (args.length === 2 && hc.branchCtx.selections !== void 0) {
     const selExpr = hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
-    const { lval: lval0, init: init0 } = paramToBinding(args[0], selExpr);
-    const { lval: lval1, init: init1 } = paramToBinding(args[1], expr);
-    block.push(
-      b2.variableDeclaration("let", [b2.variableDeclarator(lval0, init0)]),
-      b2.variableDeclaration("let", [b2.variableDeclarator(lval1, init1)])
-    );
+    const { lval: lval0, init: init0, skip: skip0 } = paramToBinding(args[0], selExpr);
+    const { lval: lval1, init: init1, skip: skip1 } = paramToBinding(args[1], expr);
+    if (!skip0) {
+      block.push(b2.variableDeclaration("let", [b2.variableDeclarator(lval0, init0)]));
+    }
+    if (!skip1) {
+      block.push(b2.variableDeclaration("let", [b2.variableDeclarator(lval1, init1)]));
+    }
   }
   if (body.type !== "BlockStatement") {
     block.push(...hirCodegenOutput(hc, body));

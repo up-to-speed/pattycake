@@ -147,12 +147,14 @@ export function hirCodegen(
       if (fn.async) hc.hasAsync = true;
       const block: b.Statement[] = [];
       if (fn.params.length >= 1) {
-        const { lval, init } = paramToBinding(fn.params[0]!, expr);
-        block.push(
-          b.variableDeclaration('let', [
-            b.variableDeclarator(lval, init),
-          ]),
-        );
+        const { lval, init, skip } = paramToBinding(fn.params[0]!, expr);
+        if (!skip) {
+          block.push(
+            b.variableDeclaration('let', [
+              b.variableDeclarator(lval, init),
+            ]),
+          );
+        }
       }
       if (fn.body.type !== 'BlockStatement') {
         block.push(...hirCodegenOutput(hc, fn.body));
@@ -405,7 +407,7 @@ function hirCodegenConstructSelectionExpr(
 function paramToBinding(
   param: b.Identifier | b.Pattern | b.RestElement,
   initExpr: b.Expression,
-): { lval: b.LVal; init: b.Expression } {
+): { lval: b.LVal; init: b.Expression; skip?: boolean } {
   if (b.isRestElement(param)) {
     // (...args) => ... : args should be [matchedValue]
     return { lval: param.argument as b.LVal, init: b.arrayExpression([initExpr]) };
@@ -414,6 +416,16 @@ function paramToBinding(
     // (x = 1) => ... : preserve the default initializer via array destructuring
     // so that `undefined` triggers the default, matching function parameter semantics
     return { lval: b.arrayPattern([param]), init: b.arrayExpression([initExpr]) };
+  }
+  // When the callback parameter has the same name as the matched expression
+  // (e.g. `.with({type:"clone"}, (repoKind) => ...)` where match target is also `repoKind`),
+  // skip the `let` declaration to avoid a TDZ error from `let repoKind = repoKind`.
+  if (
+    b.isIdentifier(param) &&
+    b.isIdentifier(initExpr) &&
+    param.name === initExpr.name
+  ) {
+    return { lval: param as b.LVal, init: initExpr, skip: true };
   }
   return { lval: param as b.LVal, init: initExpr };
 }
@@ -442,19 +454,23 @@ function hirCodegenPatternThenFunction(
       const valueExpr = hc.branchCtx.selections === undefined
         ? expr
         : hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
-      const { lval, init } = paramToBinding(param, valueExpr);
-      block.push(
-        b.variableDeclaration('let', [b.variableDeclarator(lval, init)]),
-      );
+      const { lval, init, skip } = paramToBinding(param, valueExpr);
+      if (!skip) {
+        block.push(
+          b.variableDeclaration('let', [b.variableDeclarator(lval, init)]),
+        );
+      }
     }
   } else if (args.length === 2 && hc.branchCtx.selections !== undefined) {
     const selExpr = hirCodegenConstructSelectionExpr(hc.branchCtx.selections);
-    const { lval: lval0, init: init0 } = paramToBinding(args[0]!, selExpr);
-    const { lval: lval1, init: init1 } = paramToBinding(args[1]!, expr);
-    block.push(
-      b.variableDeclaration('let', [b.variableDeclarator(lval0, init0)]),
-      b.variableDeclaration('let', [b.variableDeclarator(lval1, init1)]),
-    );
+    const { lval: lval0, init: init0, skip: skip0 } = paramToBinding(args[0]!, selExpr);
+    const { lval: lval1, init: init1, skip: skip1 } = paramToBinding(args[1]!, expr);
+    if (!skip0) {
+      block.push(b.variableDeclaration('let', [b.variableDeclarator(lval0, init0)]));
+    }
+    if (!skip1) {
+      block.push(b.variableDeclaration('let', [b.variableDeclarator(lval1, init1)]));
+    }
   }
 
   // For arrow expression we can just return the expr
