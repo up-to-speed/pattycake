@@ -535,6 +535,21 @@ function hirCodegenPattern(
         b.logicalExpression('&&', acc, check),
       );
     }
+    case 'refinedType': {
+      // P.<type>.<method>(args) compiles to:
+      //   typeof expr === '<type>' && expr.<method>(...args)
+      // e.g. P.string.startsWith(prefix) → typeof x === 'string' && x.startsWith(prefix)
+      const typeCheck = hirCodegenPatternSimpleTypeof(
+        hc,
+        expr,
+        pattern.typeName as 'string' | 'number' | 'bigint' | 'boolean',
+      );
+      const methodCall = b.callExpression(
+        hirCodegenMemberExpr(hc, expr, b.identifier(pattern.methodName)),
+        pattern.args,
+      );
+      return b.logicalExpression('&&', typeCheck, methodCall);
+    }
     case 'symbol':
     case '_array':
     case 'set':

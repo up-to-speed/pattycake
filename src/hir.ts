@@ -57,7 +57,10 @@ export type Pattern =
   // P.union(...patterns): matches if any of the subpatterns match
   | { type: 'union'; patterns: Pattern[] }
   // P.intersection(...patterns): matches if ALL subpatterns match
-  | { type: 'intersection'; patterns: Pattern[] };
+  | { type: 'intersection'; patterns: Pattern[] }
+  // P.<type>.<method>(args) refined type patterns
+  // e.g. P.string.startsWith(prefix), P.number.gte(5)
+  | { type: 'refinedType'; typeName: string; methodName: string; args: b.Expression[] };
 
 /**
  * https://github.com/gvergnaud/ts-pattern#literals
@@ -363,16 +366,38 @@ function transformExprToPattern(ht: HirTransform, expr: b.Expression): Pattern {
     return transformExprToPattern(ht, expr.expression);
   }
 
+  // Handle P.<type>.<method>(args) patterns like P.string.startsWith(prefix),
+  // P.string.endsWith(suffix), P.string.includes(substr), P.string.regex(re),
+  // P.number.gte(n), P.number.gt(n), P.number.lte(n), P.number.lt(n),
+  // P.number.between(min, max), P.number.int(), P.number.finite(),
+  // P.number.positive(), P.number.negative()
+  if (
+    b.isCallExpression(expr) &&
+    b.isMemberExpression(expr.callee) &&
+    b.isMemberExpression(expr.callee.object) &&
+    b.isIdentifier(expr.callee.object.object) &&
+    expr.callee.object.object.name === ht.patternIdentifier &&
+    b.isIdentifier(expr.callee.object.property) &&
+    b.isIdentifier(expr.callee.property)
+  ) {
+    const typeName = expr.callee.object.property.name; // e.g. "string", "number"
+    const methodName = expr.callee.property.name; // e.g. "startsWith", "gte"
+    const args = expr.arguments;
+    return {
+      type: 'refinedType',
+      typeName,
+      methodName,
+      args: args.filter((a): a is b.Expression => b.isExpression(a)),
+    };
+  }
+
   // Handle bare identifiers (e.g. WORKING_TREE, HEAD) and member expressions
   // (e.g. StorageKind.JSONL, CONTENT_TYPES.TEXT) as runtime equality comparisons
   if (b.isIdentifier(expr) || b.isMemberExpression(expr)) {
     return { type: 'expression', value: expr };
   }
 
-  // Handle call expressions that are P.* pattern helpers we haven't implemented
-  // (e.g. P.string.startsWith(prefix), P.number.gte(5), etc.)
-  // These are valid ts-pattern patterns but we can't compile them yet.
-  // Throw so the match expression falls back to ts-pattern runtime.
+  // Unsupported pattern expression — throw so the match falls back to runtime
   throw new Error(`unsupported pattern expression: ${expr.type}`);
 }
 

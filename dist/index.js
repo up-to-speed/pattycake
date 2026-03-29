@@ -230,6 +230,17 @@ function transformExprToPattern(ht, expr) {
   if (b.isTSAsExpression(expr)) {
     return transformExprToPattern(ht, expr.expression);
   }
+  if (b.isCallExpression(expr) && b.isMemberExpression(expr.callee) && b.isMemberExpression(expr.callee.object) && b.isIdentifier(expr.callee.object.object) && expr.callee.object.object.name === ht.patternIdentifier && b.isIdentifier(expr.callee.object.property) && b.isIdentifier(expr.callee.property)) {
+    const typeName = expr.callee.object.property.name;
+    const methodName = expr.callee.property.name;
+    const args = expr.arguments;
+    return {
+      type: "refinedType",
+      typeName,
+      methodName,
+      args: args.filter((a) => b.isExpression(a))
+    };
+  }
   if (b.isIdentifier(expr) || b.isMemberExpression(expr)) {
     return { type: "expression", value: expr };
   }
@@ -697,6 +708,18 @@ function hirCodegenPattern(hc, expr, pattern) {
       return checks.reduce(
         (acc, check) => b2.logicalExpression("&&", acc, check)
       );
+    }
+    case "refinedType": {
+      const typeCheck = hirCodegenPatternSimpleTypeof(
+        hc,
+        expr,
+        pattern.typeName
+      );
+      const methodCall = b2.callExpression(
+        hirCodegenMemberExpr(hc, expr, b2.identifier(pattern.methodName)),
+        pattern.args
+      );
+      return b2.logicalExpression("&&", typeCheck, methodCall);
     }
     case "symbol":
     case "_array":
