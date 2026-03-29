@@ -36,7 +36,10 @@ export const unplugin = createUnplugin((options: Opts) => {
       try {
         const result = await transformAsync(code, { plugins, filename: id });
         return result?.code || null;
-      } catch {
+      } catch (err) {
+        if (options.hardFail) {
+          throw err;
+        }
         // Fall back to original code if pattycake can't handle this file
         return null;
       }

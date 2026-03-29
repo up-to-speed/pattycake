@@ -174,6 +174,29 @@ function hirFromCallExprImpl(
         exhaustive = true;
         break;
       }
+      case 'when': {
+        // .when(predicate, handler) is equivalent to .with(P.when(predicate), handler)
+        // First arg is the predicate, second arg is the handler
+        const predicate = callExpr.arguments[0];
+        const handler = callExpr.arguments[1];
+        if (!predicate || !b.isExpression(predicate)) {
+          throw new Error('.when() requires a predicate argument');
+        }
+        if (!handler || !b.isExpression(handler)) {
+          throw new Error('.when() requires a handler argument');
+        }
+        const whenPattern: Pattern = { type: 'when', predicate };
+        branches.push({
+          patterns: [whenPattern],
+          then: handler,
+          guard: undefined,
+        });
+        break;
+      }
+      case 'returnType': {
+        // .returnType<T>() is a type-only method with no runtime effect — skip it
+        break;
+      }
       default: {
         throw new Error(`Unhandled ts-pattern API function: ${property.name}`);
       }

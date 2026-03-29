@@ -120,6 +120,15 @@ const pattycakePlugin = (opts: Opts): PluginObj => {
             }
           }
         } catch (err) {
+          if (opts.hardFail) {
+            const filePath = (path.hub as any)?.file?.opts?.filename ?? 'unknown';
+            const loc = path.node.loc?.start;
+            const locStr = loc ? `:${loc.line}:${loc.column}` : '';
+            const msg = err instanceof Error ? err.message : String(err);
+            throw new Error(
+              `pattycake: failed to compile match() in ${filePath}${locStr}: ${msg}`,
+            );
+          }
           if (!opts.mute) {
             console.error(err);
           }

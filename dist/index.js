@@ -116,6 +116,26 @@ function hirFromCallExprImpl(ht, callExprs) {
         exhaustive = true;
         break;
       }
+      case "when": {
+        const predicate = callExpr.arguments[0];
+        const handler = callExpr.arguments[1];
+        if (!predicate || !b.isExpression(predicate)) {
+          throw new Error(".when() requires a predicate argument");
+        }
+        if (!handler || !b.isExpression(handler)) {
+          throw new Error(".when() requires a handler argument");
+        }
+        const whenPattern = { type: "when", predicate };
+        branches.push({
+          patterns: [whenPattern],
+          then: handler,
+          guard: void 0
+        });
+        break;
+      }
+      case "returnType": {
+        break;
+      }
       default: {
         throw new Error(`Unhandled ts-pattern API function: ${property.name}`);
       }
@@ -1026,6 +1046,15 @@ var pattycakePlugin = (opts) => {
             }
           }
         } catch (err) {
+          if (opts.hardFail) {
+            const filePath = path.hub?.file?.opts?.filename ?? "unknown";
+            const loc = path.node.loc?.start;
+            const locStr = loc ? `:${loc.line}:${loc.column}` : "";
+            const msg = err instanceof Error ? err.message : String(err);
+            throw new Error(
+              `pattycake: failed to compile match() in ${filePath}${locStr}: ${msg}`
+            );
+          }
           if (!opts.mute) {
             console.error(err);
           }
@@ -1077,7 +1106,10 @@ var unplugin = (0, import_unplugin.createUnplugin)((options) => {
       try {
         const result = await (0, import_core.transformAsync)(code, { plugins, filename: id });
         return result?.code || null;
-      } catch {
+      } catch (err) {
+        if (options.hardFail) {
+          throw err;
+        }
         return null;
       }
     }

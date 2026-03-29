@@ -8,6 +8,13 @@ type HirCodegenOpts = {
      * */
     disableOptionalChaining: boolean;
     mute?: boolean;
+    /**
+     * When true, throw an error if any match() expression cannot be fully
+     * compiled (instead of silently falling back to ts-pattern runtime).
+     * Use this in builds where you want to guarantee all match() calls are
+     * compiled away.
+     */
+    hardFail?: boolean;
 };
 
 type Opts = HirCodegenOpts;
