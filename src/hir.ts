@@ -42,14 +42,17 @@ export type Pattern =
   | { type: 'nullish' }
   | { type: 'bigint' }
   | { type: 'symbol' }
-  | { type: 'wildcard' } // P._
+  | { type: 'wildcard' } // P._, P.any, P.unknown
+  | { type: 'nonNullable' } // P.nonNullable
   // Custom patterns: P.when
-  | { type: '_array'; value: unknown }
+  | { type: '_array'; subpattern: Pattern }
   | { type: 'set'; subpattern: Pattern }
   | { type: 'map'; key: Pattern; value: Pattern }
   // https://github.com/gvergnaud/ts-pattern/tree/main#pwhen-patterns
   | { type: 'when'; predicate: b.Expression }
   | { type: 'not'; subpattern: Pattern }
+  | { type: 'optional'; subpattern: Pattern }
+  | { type: 'instanceOf'; constructor: b.Expression }
   | { type: 'select'; value: PatternSelect }
   // Runtime expression comparison: matches when expr === value at runtime
   // Used for identifier references (e.g. WORKING_TREE) and member expressions (e.g. StorageKind.JSONL)
@@ -462,10 +465,41 @@ function transformToComplexTsPattern(
       });
       return { type: 'intersection', patterns };
     }
+    case 'not': {
+      if (args.length !== 1 || !b.isExpression(args[0]))
+        throw new Error('P.not() requires exactly one expression argument');
+      return { type: 'not', subpattern: transformExprToPattern(ht, args[0]) };
+    }
     case '_array':
-    case 'set':
-    case 'map':
-    case 'not':
+    case 'array': {
+      if (args.length !== 1 || !b.isExpression(args[0]))
+        throw new Error('P.array() requires exactly one expression argument');
+      return { type: '_array', subpattern: transformExprToPattern(ht, args[0]) };
+    }
+    case 'set': {
+      if (args.length !== 1 || !b.isExpression(args[0]))
+        throw new Error('P.set() requires exactly one expression argument');
+      return { type: 'set', subpattern: transformExprToPattern(ht, args[0]) };
+    }
+    case 'map': {
+      if (args.length !== 2 || !b.isExpression(args[0]) || !b.isExpression(args[1]))
+        throw new Error('P.map() requires exactly two expression arguments');
+      return {
+        type: 'map',
+        key: transformExprToPattern(ht, args[0]),
+        value: transformExprToPattern(ht, args[1]),
+      };
+    }
+    case 'optional': {
+      if (args.length !== 1 || !b.isExpression(args[0]))
+        throw new Error('P.optional() requires exactly one expression argument');
+      return { type: 'optional', subpattern: transformExprToPattern(ht, args[0]) };
+    }
+    case 'instanceOf': {
+      if (args.length !== 1 || !b.isExpression(args[0]))
+        throw new Error('P.instanceOf() requires exactly one expression argument');
+      return { type: 'instanceOf', constructor: args[0] };
+    }
     default: {
       throw new Error(
         `unimplemented pattern function: '${ht.patternIdentifier}.${functionName.name}'`,
@@ -533,7 +567,11 @@ function transformToSimpleTsPattern(
     case 'symbol':
       return { type: 'symbol' };
     case '_':
+    case 'any':
+    case 'unknown':
       return { type: 'wildcard' };
+    case 'nonNullable':
+      return { type: 'nonNullable' };
     default: {
       throw new Error(
         `unrecognized pattern: '${ht.patternIdentifier}.${expr.name}'`,

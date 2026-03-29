@@ -573,12 +573,84 @@ function hirCodegenPattern(
       );
       return b.logicalExpression('&&', typeCheck, methodCall);
     }
-    case 'symbol':
-    case '_array':
-    case 'set':
-    case 'map':
+    case 'symbol': {
+      return b.binaryExpression(
+        '===',
+        b.unaryExpression('typeof', expr, true),
+        b.stringLiteral('symbol'),
+      );
+    }
+    case 'nonNullable': {
+      // P.nonNullable matches anything that is not null or undefined
+      return b.logicalExpression(
+        '&&',
+        b.binaryExpression('!==', expr, b.nullLiteral()),
+        b.binaryExpression('!==', expr, b.identifier('undefined')),
+      );
+    }
     case 'not': {
-      throw new Error(`unimplemented pattern: ${pattern.type}`);
+      // P.not(subpattern) compiles to: !(subpattern_check)
+      const subCheck = hirCodegenPattern(hc, expr, pattern.subpattern);
+      return b.unaryExpression('!', b.parenthesizedExpression(subCheck));
+    }
+    case '_array': {
+      // P.array(subpattern) compiles to:
+      //   Array.isArray(expr) && expr.every(__patsy_el => subpattern_check(__patsy_el))
+      const isArrayCall = b.callExpression(
+        b.memberExpression(b.identifier('Array'), b.identifier('isArray')),
+        [expr],
+      );
+      const elParam = b.identifier('__patsy_el');
+      const elCheck = hirCodegenPattern(hc, elParam, pattern.subpattern);
+      const everyCall = b.callExpression(
+        b.memberExpression(expr, b.identifier('every')),
+        [b.arrowFunctionExpression([elParam], elCheck)],
+      );
+      return b.logicalExpression('&&', isArrayCall, everyCall);
+    }
+    case 'set': {
+      // P.set(subpattern) compiles to:
+      //   expr instanceof Set && [...expr].every(__patsy_el => subpattern_check)
+      const instanceCheck = b.binaryExpression('instanceof', expr, b.identifier('Set'));
+      const elParam = b.identifier('__patsy_el');
+      const elCheck = hirCodegenPattern(hc, elParam, pattern.subpattern);
+      const everyCall = b.callExpression(
+        b.memberExpression(
+          b.arrayExpression([b.spreadElement(expr)]),
+          b.identifier('every'),
+        ),
+        [b.arrowFunctionExpression([elParam], elCheck)],
+      );
+      return b.logicalExpression('&&', instanceCheck, everyCall);
+    }
+    case 'map': {
+      // P.map(keyPattern, valuePattern) compiles to:
+      //   expr instanceof Map && [...expr].every(([__patsy_k, __patsy_v]) => keyCheck && valueCheck)
+      const instanceCheck = b.binaryExpression('instanceof', expr, b.identifier('Map'));
+      const kParam = b.identifier('__patsy_k');
+      const vParam = b.identifier('__patsy_v');
+      const kCheck = hirCodegenPattern(hc, kParam, pattern.key);
+      const vCheck = hirCodegenPattern(hc, vParam, pattern.value);
+      const bothCheck = b.logicalExpression('&&', kCheck, vCheck);
+      const everyCall = b.callExpression(
+        b.memberExpression(
+          b.arrayExpression([b.spreadElement(expr)]),
+          b.identifier('every'),
+        ),
+        [b.arrowFunctionExpression([b.arrayPattern([kParam, vParam])], bothCheck)],
+      );
+      return b.logicalExpression('&&', instanceCheck, everyCall);
+    }
+    case 'optional': {
+      // P.optional(subpattern) compiles to:
+      //   expr === undefined || subpattern_check(expr)
+      const isUndefined = b.binaryExpression('===', expr, b.identifier('undefined'));
+      const subCheck = hirCodegenPattern(hc, expr, pattern.subpattern);
+      return b.logicalExpression('||', isUndefined, subCheck);
+    }
+    case 'instanceOf': {
+      // P.instanceOf(Ctor) compiles to: expr instanceof Ctor
+      return b.binaryExpression('instanceof', expr, pattern.constructor);
     }
     case 'select': {
       return hirCodegenPatternSelect(hc, expr, pattern.value);
