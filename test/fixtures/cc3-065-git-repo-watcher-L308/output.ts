@@ -37,7 +37,6 @@ __patsy_temp_0: {
     break __patsy_temp_0;
   }
   if (repoKind?.type === "clone") {
-    let repoKind = repoKind;
     const unsubscribeFromRoot = await this.subscribe(repoKind.rootRepoPath, {
       onFilesChanged: () => {},
       onGitStateChanged: async () => {

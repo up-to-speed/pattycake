@@ -8,14 +8,12 @@ declare const toolInput: any;
 let __result;
 __patsy_temp_0: {
   if (block?.type === "text") {
-    let block = block;
     content.push({
       type: "text",
       value: block.text
     });
   }
   if (block?.type === "tool_use") {
-    let block = block;
     const toolInput = block.input as {
       command: string;
     };

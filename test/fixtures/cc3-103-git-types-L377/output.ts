@@ -5,22 +5,18 @@ declare const exhaustive: any;
 let __result;
 __patsy_temp_0: {
   if (file?.type === "ChangedFile") {
-    let file = file;
     __result = file.path;
     break __patsy_temp_0;
   }
   if (file?.type === "AddedFile") {
-    let file = file;
     __result = file.path;
     break __patsy_temp_0;
   }
   if (file?.type === "DeletedFile") {
-    let file = file;
     __result = file.path;
     break __patsy_temp_0;
   }
   if (file?.type === "RenamedFile") {
-    let file = file;
     __result = file.pathAfter;
     break __patsy_temp_0;
   }

@@ -8,12 +8,10 @@ declare const fromFileRangeA: any;
 let __result;
 __patsy_temp_0: {
   if (chunk?.type === "Chunk") {
-    let chunk = chunk;
     __result = [chunk.fromFileRange.start, chunk.toFileRange.start];
     break __patsy_temp_0;
   }
   if (chunk?.type === "CombinedChunk") {
-    let chunk = chunk;
     __result = [chunk.fromFileRangeA.start, chunk.toFileRange.start];
     break __patsy_temp_0;
   }

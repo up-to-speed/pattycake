@@ -5,12 +5,10 @@ declare const exhaustive: any;
 let __result;
 __patsy_temp_0: {
   if (chunk?.type === "Chunk") {
-    let chunk = chunk;
     __result = chunk.changes;
     break __patsy_temp_0;
   }
   if (chunk?.type === "CombinedChunk") {
-    let chunk = chunk;
     __result = chunk.changes;
     break __patsy_temp_0;
   }
