@@ -74,7 +74,7 @@ export function hirCodegenInit(
     const outVar = path.parent.id;
     if (!b.isLVal(outVar)) throw new Error('unimplemented');
 
-    if (b.isArrayPattern(path.parent.id)) {
+    if (b.isArrayPattern(path.parent.id) || b.isObjectPattern(path.parent.id)) {
       return {
         ...opts,
         kind: 'block',

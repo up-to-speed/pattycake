@@ -190,6 +190,24 @@ export { called };
     expect(mod.called).toBe('b');
   });
 
+  // Bug: destructuring assignment from match() produces invalid code
+  it('object destructuring from match() produces valid code', async () => {
+    const mod = await importTransformedModule(`
+import { match } from 'ts-pattern';
+
+const pkg = { registryType: 'npm', identifier: 'foo' };
+const { command, args } = match(pkg.registryType)
+  .with("npm", () => ({ command: "npx", args: ["-y", pkg.identifier] }))
+  .with("pypi", () => ({ command: "uvx", args: [pkg.identifier] }))
+  .otherwise(() => ({ command: pkg.identifier, args: [] }));
+
+export { command, args };
+`);
+
+    expect(mod.command).toBe('npx');
+    expect(mod.args).toEqual(['-y', 'foo']);
+  });
+
   // Bug: rest parameter in handler with P.select() only gets selection, not both args
   it('passes both selection and matchExpr to rest parameter with P.select()', async () => {
     const mod = await importTransformedModule(`
